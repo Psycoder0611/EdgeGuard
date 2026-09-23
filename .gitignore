@@ -1,0 +1,20 @@
+# Python environment and cache
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# PRIVACY: raw vehicle data and logs stay local, never uploaded
+data/
+logs/
+*.csv
+*.log
+
+# Secrets
+.env
+*.key
+*.pem
+
+# Editor / OS
+.vscode/
+.DS_Store
