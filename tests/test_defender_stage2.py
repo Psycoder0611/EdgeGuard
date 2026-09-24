@@ -237,3 +237,78 @@ def test_load_refuses_other_model_version(model, tmp_path):
 def test_cannot_save_untrained_model(tmp_path):
     with pytest.raises(RuntimeError, match="untrained"):
         Stage2Model().save(tmp_path / "x.json", "v2")
+
+
+# ---------- Ranges learned from full captures (real-data fix) ----------
+def _frames_of(windows):
+    for w in windows:
+        for f in w.frames:
+            yield (f.timestamp, f.can_id, f.payload)
+
+
+def test_full_capture_ranges_prevent_false_alarm():
+    """A field that is constant in the SAMPLED windows but changes elsewhere in
+    the full capture must not be flagged when that normal change appears."""
+    def window_with(value, index):
+        frames = [{"timestamp": 1000.0 + index + k * 0.02, "can_id": "371",
+                   "payload": f"{value:02X}" + "00" * 7} for k in range(40)]
+        return TrafficWindow(window_id=f"cap01_w{index:04d}", capture_id="cap01",
+                             window_start=1000.0 + index, window_end=1001.0 + index,
+                             frames=frames)
+
+    sampled = [window_with(5, i) for i in range(10)]            # byte0 always 5 in samples
+    full_capture = sampled + [window_with(6, 50)]               # rare normal change to 6
+    rare_but_normal = window_with(6, 99)
+
+    windows_only = Stage2Model().fit(sampled)
+    with_full = Stage2Model().fit(sampled, range_captures=[_frames_of(full_capture)])
+
+    top = 10 / 11
+    assert windows_only.score(rare_but_normal).score > top      # false alarm before the fix
+    assert with_full.score(rare_but_normal).score <= top        # no false alarm after
+
+
+def test_jumps_do_not_cross_capture_boundaries():
+    """The last frame of one capture and the first of the next are not a 'jump'."""
+    def frames(value):
+        return [(1.0 + k, "0D0", f"{value:02X}" + "00" * 7) for k in range(5)]
+    model = Stage2Model().fit([make_normal_window(0), make_normal_window(1)],
+                              range_captures=[frames(10), frames(200)])
+    assert model.field_max_jump.get("0D0|byte0", 0) < 190
+
+
+# ---------- Watch-list --------------------------------------------------
+def test_watch_list_ignores_unwatched_ids(normal_validation_scores):
+    """0D0 attacked, but only 0F4 is watched -> Stage 2 does not see it."""
+    watched = Stage2Model(watch_ids=["0F4"]).fit([make_normal_window(i) for i in range(40)])
+    attack = frozen_byte_window()                       # attacks 0D0
+    assert "No payload anomaly" in watched.score(attack).evidence
+
+
+def test_watch_list_still_catches_watched_id():
+    watched = Stage2Model(watch_ids=["0D0"]).fit([make_normal_window(i) for i in range(40)])
+    validation = [watched.score(make_normal_window(i)).score for i in range(100, 130)]
+    assert watched.score(frozen_byte_window()).score > max(validation)
+
+
+def test_watch_ids_are_normalized():
+    from defender.stage2 import normalize_can_id
+    assert normalize_can_id("0xd0") == "0D0"
+    assert normalize_can_id("0x6e0") == "6E0"
+    assert normalize_can_id("d0") == "0D0"
+    assert Stage2Model(watch_ids=["0xd0", "0D0"]).watch_ids == ["0D0"]
+
+
+def test_bad_watch_ids_rejected():
+    with pytest.raises(ValueError, match="hexadecimal"):
+        Stage2Model(watch_ids=["speed"])
+    with pytest.raises(ValueError, match="empty"):
+        Stage2Model(watch_ids=[])
+
+
+def test_watch_list_saved_and_loaded(tmp_path):
+    model = Stage2Model(watch_ids=["0D0"]).fit([make_normal_window(i) for i in range(10)])
+    model.save(tmp_path / "s2.json", "v2")
+    loaded = Stage2Model.load(tmp_path / "s2.json", "v2")
+    assert loaded.watch_ids == ["0D0"]
+    assert loaded.score(frozen_byte_window()).score == model.score(frozen_byte_window()).score

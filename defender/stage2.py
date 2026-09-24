@@ -5,6 +5,14 @@ Stage 2 looks at PAYLOAD CONTENT, never timing (that is Stage 1's job).
 It is meant to catch masquerade and other attacks that keep normal
 message timing but change what a message says.
 
+WATCH-LIST (important for real data): Stage 2 can be limited to a short
+list of safety-relevant CAN IDs (watch_ids). On real ROAD data, watching
+all ~100 IDs flagged 170 of 184 NORMAL validation windows, because some
+field in some ID always does something new in a new drive. Watching only
+the attacked IDs (0D0, 6E0, chosen from DEVELOPMENT attacks) flagged 0 of
+184. Attacks on IDs outside the watch-list are NOT seen by Stage 2; that
+limit must be stated in results. watch_ids=None watches every ID.
+
 It learns "normal" from NORMAL TRAINING windows only, per CAN ID and per
 "field" inside that ID's payload:
     byte fields   each payload byte position (byte0, byte1, ...)
@@ -43,7 +51,7 @@ KNOWN LIMITS (expected, not bugs):
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -66,8 +74,27 @@ class Stage2Result(BaseModel):
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
+def normalize_can_id(value: str) -> str:
+    """'0xd0' / '0D0' / 'd0' -> '0D0' (the log and schema format)."""
+    text = str(value).strip().upper()
+    if text.startswith("0X"):
+        text = text[2:]
+    if not text or any(c not in "0123456789ABCDEF" for c in text):
+        raise ValueError(f"{value!r} is not a hexadecimal CAN ID")
+    return text.zfill(3)
+
+
 def _payload_bytes(payload: str) -> List[int]:
     return [int(payload[i:i + 2], 16) for i in range(0, len(payload), 2)]
+
+
+def _payload_fields(data: List[int]):
+    """(field_name, value) for every byte and byte-pair field of one payload."""
+    for i, byte in enumerate(data):
+        yield f"byte{i}", byte
+    for i in range(len(data) - 1):
+        yield f"pair{i}_be", (data[i] << 8) | data[i + 1]
+        yield f"pair{i}_le", (data[i + 1] << 8) | data[i]
 
 
 def _field_values(window: TrafficWindow) -> Dict[Tuple[str, str], List[int]]:
@@ -80,11 +107,8 @@ def _field_values(window: TrafficWindow) -> Dict[Tuple[str, str], List[int]]:
     for can_id, entries in by_id.items():
         entries.sort(key=lambda e: e[0])
         for _, data in entries:
-            for i, byte in enumerate(data):
-                fields[(can_id, f"byte{i}")].append(byte)
-            for i in range(len(data) - 1):
-                fields[(can_id, f"pair{i}_be")].append((data[i] << 8) | data[i + 1])
-                fields[(can_id, f"pair{i}_le")].append((data[i + 1] << 8) | data[i])
+            for name, value in _payload_fields(data):
+                fields[(can_id, name)].append(value)
     return fields
 
 
@@ -92,7 +116,14 @@ def _field_values(window: TrafficWindow) -> Dict[Tuple[str, str], List[int]]:
 # The model
 # ---------------------------------------------------------------------
 class Stage2Model:
-    def __init__(self):
+    def __init__(self, watch_ids: Optional[Iterable[str]] = None):
+        if watch_ids is not None:
+            watch = sorted({normalize_can_id(i) for i in watch_ids})
+            if not watch:
+                raise ValueError("watch_ids is empty; use None to watch every ID")
+            self.watch_ids: Optional[List[str]] = watch
+        else:
+            self.watch_ids = None
         self.fitted = False
         self.field_range: Dict[str, Tuple[int, int]] = {}    # "ID|field" -> (min, max)
         self.field_max_jump: Dict[str, int] = {}
@@ -103,9 +134,23 @@ class Stage2Model:
     def _key(can_id: str, field_name: str) -> str:
         return f"{can_id}|{field_name}"
 
+    def _watched(self, can_id: str) -> bool:
+        return self.watch_ids is None or can_id in self.watch_ids
+
     # ---------- training ----------------------------------------------
-    def fit(self, normal_windows: List[TrafficWindow]) -> "Stage2Model":
-        """Learn normal payload content from NORMAL TRAINING windows only."""
+    def fit(self, normal_windows: List[TrafficWindow],
+            range_captures: Optional[Iterable[Iterable[Tuple[float, str, str]]]] = None
+            ) -> "Stage2Model":
+        """Learn normal payload content from NORMAL TRAINING data only.
+
+        normal_windows: training windows. Always used for calibration.
+        range_captures: optional. The FULL frame streams of the SAME training
+            captures, one iterable of (timestamp, can_id, payload) per capture
+            (e.g. road_reader.iter_frames(path)). If given, field ranges and
+            jump sizes are learned from EVERY frame instead of only the
+            windows, which matters when windows are sampled: rare but normal
+            changes are then not mistaken for attacks.
+        """
         if not isinstance(normal_windows, (list, tuple)) or len(normal_windows) < 2:
             raise ValueError("fit() needs a list of at least 2 normal training windows")
         for i, window in enumerate(normal_windows):
@@ -114,16 +159,60 @@ class Stage2Model:
                     f"normal_windows[{i}] is {type(window).__name__}, expected TrafficWindow"
                 )
 
-        all_values: Dict[str, List[int]] = defaultdict(list)
+        low: Dict[str, int] = {}
+        high: Dict[str, int] = {}
         max_jump: Dict[str, int] = defaultdict(int)
-        for window in normal_windows:
-            for (can_id, field_name), values in _field_values(window).items():
-                key = self._key(can_id, field_name)
-                all_values[key].extend(values)
-                for a, b in zip(values, values[1:]):
-                    max_jump[key] = max(max_jump[key], abs(b - a))
 
-        self.field_range = {k: (min(v), max(v)) for k, v in all_values.items()}
+        def update(key, values):
+            low[key] = min(low.get(key, values[0]), min(values))
+            high[key] = max(high.get(key, values[0]), max(values))
+            for a, b in zip(values, values[1:]):
+                if abs(b - a) > max_jump[key]:
+                    max_jump[key] = abs(b - a)
+
+        if range_captures is None:
+            for window in normal_windows:
+                for (can_id, field_name), values in _field_values(window).items():
+                    if self._watched(can_id):
+                        update(self._key(can_id, field_name), values)
+        else:
+            for capture in range_captures:
+                last_payload: Dict[str, str] = {}
+                last_value: Dict[str, int] = {}
+                for _, can_id, payload in capture:
+                    can_id = can_id.upper()
+                    if not self._watched(can_id):
+                        continue          # not on the watch-list
+                    if last_payload.get(can_id) == payload:
+                        continue          # identical payload: no new range or jump
+                    last_payload[can_id] = payload
+                    for name, value in _payload_fields(_payload_bytes(payload)):
+                        key = can_id + "|" + name
+                        previous = last_value.get(key)
+                        if previous == value:
+                            continue      # this field did not change
+                        last_value[key] = value
+                        if previous is None:
+                            if key not in low or value < low[key]:
+                                low[key] = value
+                            if key not in high or value > high[key]:
+                                high[key] = value
+                            continue
+                        if value < low[key]:
+                            low[key] = value
+                        elif value > high[key]:
+                            high[key] = value
+                        jump = value - previous if value > previous else previous - value
+                        if jump > max_jump[key]:
+                            max_jump[key] = jump
+            # Windows come from the same captures, but include them too so no
+            # field seen in calibration is missing a range.
+            for window in normal_windows:
+                for (can_id, field_name), values in _field_values(window).items():
+                    if self._watched(can_id):
+                        update(self._key(can_id, field_name), values)
+
+        self.field_range = {k: (low[k], high[k]) for k in low}
         self.field_max_jump = dict(max_jump)
         self.fitted = True   # needed so _raw_values can run
 
@@ -142,6 +231,8 @@ class Stage2Model:
         evidence: Dict[str, str] = {}
 
         for (can_id, field_name), values in _field_values(window).items():
+            if not self._watched(can_id):
+                continue    # not on the watch-list
             key = self._key(can_id, field_name)
             if key not in self.field_range:
                 continue    # unseen field: covered by Stage 1's unknown_ids, not here
@@ -208,6 +299,7 @@ class Stage2Model:
             raise ValueError("model_version must be a non-empty string, e.g. 'v2'")
         record = {
             "model_version": model_version,
+            "watch_ids": self.watch_ids,
             "field_range": self.field_range,
             "field_max_jump": self.field_max_jump,
             "reference": self.reference,
@@ -228,7 +320,7 @@ class Stage2Model:
                 f"Model version mismatch: Stage 2 file is {record.get('model_version')!r}, "
                 f"expected {expected_model_version!r}"
             )
-        model = cls()
+        model = cls(watch_ids=record.get("watch_ids"))
         model.field_range = {k: tuple(v) for k, v in record["field_range"].items()}
         model.field_max_jump = record["field_max_jump"]
         model.reference = record["reference"]

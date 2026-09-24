@@ -73,6 +73,11 @@ class TrainingReport(BaseModel):
     # Set only by train_v2: the v1 model whose Stage 1 was reused unchanged.
     # None for a v1 report, so old train_info files still match this shape.
     base_stage1_version: Optional[str] = None
+    # True if Stage 2 learned field ranges from ALL frames of the train
+    # captures (not only the sampled windows). False for v1 reports.
+    stage2_ranges_from_full_captures: bool = False
+    # Stage 2 watch-list used for this model (None = every ID; None for v1).
+    stage2_watch_ids: Optional[List[str]] = None
 
 
 def _to_list(windows: Iterable[TrafficWindow], name: str) -> List[TrafficWindow]:
@@ -201,6 +206,8 @@ def train_v2(
     stride_s: float,
     max_false_alarm_rate: Optional[float] = None,
     overwrite: bool = False,
+    stage2_range_captures=None,
+    stage2_watch_ids: Optional[Sequence[str]] = None,
 ) -> TrainingReport:
     """Build v2 = v1's Stage 1 (UNCHANGED) + a NEW Stage 2, fused, with a
     threshold re-chosen on the fused score. Returns a TrainingReport.
@@ -212,6 +219,13 @@ def train_v2(
     max_false_alarm_rate: if None (the default), uses the SAME rate v1
     was trained with, so the two versions are compared on the same
     false-alarm budget. Pass a value explicitly to use a different one.
+
+    stage2_range_captures: optional full frame streams of the SAME train
+    captures (see Stage2Model.fit). Strongly recommended with real data when
+    train windows are sampled.
+
+    stage2_watch_ids: optional Stage 2 watch-list of CAN IDs (e.g. ["0D0",
+    "6E0"]), chosen from DEVELOPMENT attacks only. None watches every ID.
     """
     if not isinstance(model_version, str) or not model_version:
         raise ValueError("model_version must be a non-empty string, e.g. 'v2'")
@@ -264,7 +278,8 @@ def train_v2(
         )
 
     # NEW Stage 2 only. Stage 1 is v1's, unchanged.
-    stage2 = Stage2Model().fit(train)
+    stage2 = Stage2Model(watch_ids=stage2_watch_ids).fit(
+        train, range_captures=stage2_range_captures)
 
     fused_scores = [fuse(v1_stage1.score(w), stage2.score(w)).score for w in validation]
     threshold = choose_threshold(fused_scores, max_false_alarm_rate)
@@ -282,6 +297,8 @@ def train_v2(
         threshold=threshold,
         validation_false_alarm_rate=alarms / len(validation),
         base_stage1_version=v1_version,
+        stage2_ranges_from_full_captures=stage2_range_captures is not None,
+        stage2_watch_ids=stage2.watch_ids,
     )
 
     # Save v1's Stage 1 again under the v2 name (identical content, just

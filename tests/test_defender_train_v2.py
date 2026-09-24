@@ -103,8 +103,8 @@ def test_v1_model_files_untouched_by_v2_training(tmp_path):
 
 
 def test_v2_stage1_content_matches_v1_stage1(tmp_path):
-    """Stage 1 is REUSED, not retrained: the saved content is identical
-    (only the model_version label inside differs)."""
+    """Stage 1 is REUSED, not retrained: the saved files' Stage 1 content
+    is identical (only the model_version label inside differs)."""
     train_v1(tmp_path)
     run_v2(tmp_path)
     v1_data = json.loads((tmp_path / "stage1_v1.json").read_text(encoding="utf-8"))
@@ -115,8 +115,8 @@ def test_v2_stage1_content_matches_v1_stage1(tmp_path):
 
 
 def test_v2_catches_a_payload_attack_v1_misses(tmp_path):
-    """MOCK masquerade-style attack (0D0 held at an unseen value):
-    v1 (Stage 1 only) misses it, v2 (Stage 1 + Stage 2) catches it."""
+    """A MOCK masquerade-style attack (0D0 held at an unseen value): v1
+    (Stage 1 only) misses it, v2 (Stage 1 + Stage 2) catches it."""
     train_v1(tmp_path)
     run_v2(tmp_path)
     v1_defender = Defender.load(tmp_path, "v1")
@@ -127,7 +127,7 @@ def test_v2_catches_a_payload_attack_v1_misses(tmp_path):
     assert v2_defender.score_window(attack_window).decision == "ATTACK"
 
 
-# ---------- Enforces the "only Stage 2 differs" rule ---------------------
+# ---------- Enforces the "only Stage 2 differs" invariant ----------------
 def test_rejects_different_train_captures_than_v1(tmp_path):
     train_v1(tmp_path)
     with pytest.raises(ValueError, match="SAME train captures"):
@@ -176,3 +176,16 @@ def test_report_saved_to_disk_matches_returned_report(tmp_path):
     report = run_v2(tmp_path)
     saved = json.loads(train_info_path(tmp_path, "v2").read_text(encoding="utf-8"))
     assert saved == report.model_dump()
+
+
+def test_report_records_full_capture_ranges(tmp_path):
+    train_v1(tmp_path)
+    frames = [[(f.timestamp, f.can_id, f.payload) for w in make_windows([cid]) for f in w.frames]
+              for cid in TRAIN_IDS]
+    report = run_v2(tmp_path, stage2_range_captures=frames)
+    assert report.stage2_ranges_from_full_captures is True
+
+
+def test_report_default_is_windows_only(tmp_path):
+    train_v1(tmp_path)
+    assert run_v2(tmp_path).stage2_ranges_from_full_captures is False

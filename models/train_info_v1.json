@@ -1,0 +1,25 @@
+{
+  "model_version": "v1",
+  "window_s": 1.0,
+  "stride_s": 0.5,
+  "train_capture_ids": [
+    "cap01",
+    "cap02",
+    "cap03",
+    "cap04",
+    "cap05",
+    "cap06"
+  ],
+  "validation_capture_ids": [
+    "cap07",
+    "cap08"
+  ],
+  "train_windows": 586,
+  "validation_windows": 184,
+  "max_false_alarm_rate": 0.01,
+  "threshold": 0.9642248722316866,
+  "validation_false_alarm_rate": 0.0,
+  "base_stage1_version": null,
+  "stage2_ranges_from_full_captures": false,
+  "stage2_watch_ids": null
+}
