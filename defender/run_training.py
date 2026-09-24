@@ -23,6 +23,11 @@ What it does:
 It NEVER reads attack captures and NEVER reads development or final_test
 captures. Only train and validation ambient captures are used.
 
+--harden-v3 trains ONLY v3 (v1's Stage 1 + Stage 2 with the "rate" frozen
+check), from the same captures and settings, and leaves v1 and v2 untouched.
+It hardens the Defender against the development miss found by Part 3
+(frozen rolling counter on 0D0).
+
 Window settings default to the team-agreed 1.0 s window / 0.5 s stride.
 The false-alarm rate has NO default: it is a team decision.
 """
@@ -110,6 +115,8 @@ def main(argv=None) -> int:
     parser.add_argument("--stage2-watch", default=",".join(DEVELOPMENT_WATCH_IDS),
                         help='Stage 2 watch-list, e.g. "0D0,6E0" (quote it in PowerShell), '
                              'or "all" to watch every ID')
+    parser.add_argument("--harden-v3", action="store_true",
+                        help="train only v3 (rate frozen check); v1 must already exist")
     parser.add_argument("--overwrite", action="store_true",
                         help="replace existing v1/v2 files (only if never evaluated)")
     args = parser.parse_args(argv)
@@ -140,25 +147,36 @@ def main(argv=None) -> int:
     validation = load_windows(PROVISIONAL_SPLIT["validation"], ambient_dir, ids,
                               args.window_s, args.stride_s, args.max_windows_per_capture)
 
-    print("Training v1 (Stage 1)...")
-    v1 = train_defender(train, validation, args.max_false_alarm_rate, "v1", args.model_dir,
-                        args.window_s, args.stride_s, overwrite=args.overwrite)
-    print("Training v2 (v1 Stage 1 + new Stage 2, ranges from all train frames;"
-          " this can take several minutes)...")
     full_train_frames = [iter_frames(ambient_dir / f"{name}.log")
                          for name in PROVISIONAL_SPLIT["train"]]
-    v2 = train_v2(args.model_dir, "v1", train, validation, "v2", args.model_dir,
-                  args.window_s, args.stride_s, overwrite=args.overwrite,
-                  stage2_range_captures=full_train_frames, stage2_watch_ids=watch)
+    if args.harden_v3:
+        print("Training v3 (v1 Stage 1 + Stage 2 with 'rate' frozen check;"
+              " this can take several minutes)...")
+        v3 = train_v2(args.model_dir, "v1", train, validation, "v3", args.model_dir,
+                      args.window_s, args.stride_s, overwrite=args.overwrite,
+                      stage2_range_captures=full_train_frames, stage2_watch_ids=watch,
+                      stage2_frozen_mode="rate")
+        reports = (v3,)
+    else:
+        print("Training v1 (Stage 1)...")
+        v1 = train_defender(train, validation, args.max_false_alarm_rate, "v1", args.model_dir,
+                            args.window_s, args.stride_s, overwrite=args.overwrite)
+        print("Training v2 (v1 Stage 1 + new Stage 2, ranges from all train frames;"
+              " this can take several minutes)...")
+        v2 = train_v2(args.model_dir, "v1", train, validation, "v2", args.model_dir,
+                      args.window_s, args.stride_s, overwrite=args.overwrite,
+                      stage2_range_captures=full_train_frames, stage2_watch_ids=watch)
+        reports = (v1, v2)
 
     print("\n=== Training summary (PROVISIONAL split) ===")
-    for report in (v1, v2):
+    for report in reports:
         print(f"{report.model_version}: {report.train_windows} train windows, "
               f"{report.validation_windows} validation windows, "
               f"threshold {report.threshold:.6f}, "
               f"validation false-alarm rate {report.validation_false_alarm_rate:.4f} "
               f"(target {report.max_false_alarm_rate})")
-    print(f"Stage 2 watch-list: {v2.stage2_watch_ids or 'all IDs'}")
+    print(f"Stage 2 watch-list: {reports[-1].stage2_watch_ids or 'all IDs'}"
+          f"  |  frozen check: {reports[-1].stage2_frozen_mode}")
     print(f"Models saved in {args.model_dir}/  |  private id map: {map_file}")
     return 0
 

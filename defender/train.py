@@ -78,6 +78,8 @@ class TrainingReport(BaseModel):
     stage2_ranges_from_full_captures: bool = False
     # Stage 2 watch-list used for this model (None = every ID; None for v1).
     stage2_watch_ids: Optional[List[str]] = None
+    # Stage 2 frozen check mode ("width" = v2, "rate" = v3). None for v1.
+    stage2_frozen_mode: Optional[str] = None
 
 
 def _to_list(windows: Iterable[TrafficWindow], name: str) -> List[TrafficWindow]:
@@ -208,6 +210,7 @@ def train_v2(
     overwrite: bool = False,
     stage2_range_captures=None,
     stage2_watch_ids: Optional[Sequence[str]] = None,
+    stage2_frozen_mode: str = "width",
 ) -> TrainingReport:
     """Build v2 = v1's Stage 1 (UNCHANGED) + a NEW Stage 2, fused, with a
     threshold re-chosen on the fused score. Returns a TrainingReport.
@@ -226,6 +229,8 @@ def train_v2(
 
     stage2_watch_ids: optional Stage 2 watch-list of CAN IDs (e.g. ["0D0",
     "6E0"]), chosen from DEVELOPMENT attacks only. None watches every ID.
+
+    stage2_frozen_mode: "width" (v2) or "rate" (v3 hardening, see stage2.py).
     """
     if not isinstance(model_version, str) or not model_version:
         raise ValueError("model_version must be a non-empty string, e.g. 'v2'")
@@ -278,7 +283,7 @@ def train_v2(
         )
 
     # NEW Stage 2 only. Stage 1 is v1's, unchanged.
-    stage2 = Stage2Model(watch_ids=stage2_watch_ids).fit(
+    stage2 = Stage2Model(watch_ids=stage2_watch_ids, frozen_mode=stage2_frozen_mode).fit(
         train, range_captures=stage2_range_captures)
 
     fused_scores = [fuse(v1_stage1.score(w), stage2.score(w)).score for w in validation]
@@ -299,6 +304,7 @@ def train_v2(
         base_stage1_version=v1_version,
         stage2_ranges_from_full_captures=stage2_range_captures is not None,
         stage2_watch_ids=stage2.watch_ids,
+        stage2_frozen_mode=stage2.frozen_mode,
     )
 
     # Save v1's Stage 1 again under the v2 name (identical content, just

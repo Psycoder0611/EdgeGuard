@@ -312,3 +312,51 @@ def test_watch_list_saved_and_loaded(tmp_path):
     loaded = Stage2Model.load(tmp_path / "s2.json", "v2")
     assert loaded.watch_ids == ["0D0"]
     assert loaded.score(frozen_byte_window()).score == model.score(frozen_byte_window()).score
+
+
+# ---------- v3 hardening: "rate" frozen check ---------------------------
+def _counter_window(index, freeze_counter=False):
+    """MOCK 0D0: byte0 = rolling counter (changes EVERY frame);
+    bytes 1-2 = slow 16-bit signal, constant within a window but very
+    different between windows (wide range)."""
+    start = 1000.0 + index
+    slow = (index * 1500) % 60000
+    frames = []
+    for k in range(50):
+        counter = 0x3A if freeze_counter else (index * 50 + k) * 8 % 256
+        payload = f"{counter:02X}{slow >> 8:02X}{slow & 0xFF:02X}" + "00" * 5
+        frames.append({"timestamp": round(start + 0.001 + k * 0.02, 6),
+                       "can_id": "0D0", "payload": payload})
+    return TrafficWindow(window_id=f"cap01_w{index:04d}", capture_id="cap01",
+                         window_start=start, window_end=start + 1.0, frames=frames)
+
+
+def test_rate_mode_catches_frozen_counter():
+    model = Stage2Model(frozen_mode="rate").fit([_counter_window(i) for i in range(40)])
+    validation = [model.score(_counter_window(i)).score for i in range(100, 130)]
+    result = model.score(_counter_window(200, freeze_counter=True))
+    assert result.score > max(validation)
+    assert "frozen_break" in result.evidence and "0D0" in result.evidence
+
+
+def test_rate_mode_no_false_alarm_on_normal_slow_signal():
+    """The slow field is constant in every normal window: freezing it is normal."""
+    model = Stage2Model(frozen_mode="rate").fit([_counter_window(i) for i in range(40)])
+    assert "No payload anomaly" in model.score(_counter_window(150)).evidence
+
+
+def test_frozen_mode_saved_and_old_files_default_to_width(tmp_path):
+    import json as _json
+    model = Stage2Model(frozen_mode="rate").fit([_counter_window(i) for i in range(10)])
+    model.save(tmp_path / "s2.json", "v3")
+    assert Stage2Model.load(tmp_path / "s2.json", "v3").frozen_mode == "rate"
+    record = _json.loads((tmp_path / "s2.json").read_text(encoding="utf-8"))
+    del record["frozen_mode"]
+    del record["frozen_counts"]
+    (tmp_path / "old.json").write_text(_json.dumps(record), encoding="utf-8")
+    assert Stage2Model.load(tmp_path / "old.json", "v3").frozen_mode == "width"
+
+
+def test_rejects_unknown_frozen_mode():
+    with pytest.raises(ValueError, match="frozen_mode"):
+        Stage2Model(frozen_mode="magic")

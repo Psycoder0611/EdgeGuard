@@ -132,3 +132,15 @@ def test_watch_all_option(fake_road):
     run(fake_road, "--stage2-watch", "all")
     info = json.loads((fake_road / "models" / "train_info_v2.json").read_text(encoding="utf-8"))
     assert info["stage2_watch_ids"] is None
+
+
+def test_harden_v3_leaves_v1_and_v2_untouched(fake_road):
+    run(fake_road)
+    before = {p.name: p.read_text(encoding="utf-8")
+              for p in (fake_road / "models").glob("*_v[12].json")}
+    assert run(fake_road, "--harden-v3") == 0
+    after = {p.name: p.read_text(encoding="utf-8")
+             for p in (fake_road / "models").glob("*_v[12].json")}
+    assert before == after
+    info = json.loads((fake_road / "models" / "train_info_v3.json").read_text(encoding="utf-8"))
+    assert info["stage2_frozen_mode"] == "rate" and info["base_stage1_version"] == "v1"

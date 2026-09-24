@@ -35,6 +35,19 @@ defender.stage1._unusualness): compared against the same checks run on
 every normal training window. The Stage 2 score is the highest sub-score
 found on any field.
 
+FROZEN CHECK MODES (frozen_mode):
+    "width"  (v2, default)  strength = the field's normal range width.
+             Weakness found by Part 3 on real data: normal windows already
+             contain wide fields that are constant within one second, so a
+             frozen rolling counter (0D0 bytes 1 and 5) did not stand out.
+    "rate"   (v3)  strength = how SURPRISING it is for this field to be
+             constant for a whole window, learned from normal training
+             windows: surprise = -log((constant_windows + 1) / (windows + 2)).
+             A counter or checksum that changes in every normal window is
+             maximally surprising when frozen; a slow signal that is often
+             constant is not.
+    Old model files without frozen_mode load as "width", so v2 is unchanged.
+
 KNOWN LIMITS (expected, not bugs):
   - "accelerator" ROAD attacks inject no frames at all -> Stage 2 has
     nothing to see; it will not catch them (neither does Stage 1).
@@ -49,6 +62,7 @@ KNOWN LIMITS (expected, not bugs):
 """
 
 import json
+import math
 from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
@@ -97,11 +111,15 @@ def _payload_fields(data: List[int]):
         yield f"pair{i}_le", (data[i + 1] << 8) | data[i]
 
 
-def _field_values(window: TrafficWindow) -> Dict[Tuple[str, str], List[int]]:
-    """(can_id, field_name) -> values, in timestamp order, for this window."""
+def _field_values(window: TrafficWindow, only_ids=None) -> Dict[Tuple[str, str], List[int]]:
+    """(can_id, field_name) -> values, in timestamp order, for this window.
+    only_ids: optional set of CAN IDs; other IDs are skipped early (speed)."""
     by_id: Dict[str, List[Tuple[float, List[int]]]] = defaultdict(list)
     for frame in window.frames:
-        by_id[frame.can_id.upper()].append((frame.timestamp, _payload_bytes(frame.payload)))
+        can_id = frame.can_id.upper()
+        if only_ids is not None and can_id not in only_ids:
+            continue
+        by_id[can_id].append((frame.timestamp, _payload_bytes(frame.payload)))
 
     fields: Dict[Tuple[str, str], List[int]] = defaultdict(list)
     for can_id, entries in by_id.items():
@@ -115,8 +133,17 @@ def _field_values(window: TrafficWindow) -> Dict[Tuple[str, str], List[int]]:
 # ---------------------------------------------------------------------
 # The model
 # ---------------------------------------------------------------------
+FROZEN_MODES = ("width", "rate")
+
+
 class Stage2Model:
-    def __init__(self, watch_ids: Optional[Iterable[str]] = None):
+    def __init__(self, watch_ids: Optional[Iterable[str]] = None,
+                 frozen_mode: str = "width"):
+        if frozen_mode not in FROZEN_MODES:
+            raise ValueError(f"frozen_mode must be one of {FROZEN_MODES}, got {frozen_mode!r}")
+        self.frozen_mode = frozen_mode
+        # "ID|field" -> [windows where constant, windows with >= 2 values]
+        self.frozen_counts: Dict[str, List[int]] = {}
         if watch_ids is not None:
             watch = sorted({normalize_can_id(i) for i in watch_ids})
             if not watch:
@@ -214,6 +241,18 @@ class Stage2Model:
 
         self.field_range = {k: (low[k], high[k]) for k in low}
         self.field_max_jump = dict(max_jump)
+
+        # How often is each field constant within a normal training window?
+        counts: Dict[str, List[int]] = defaultdict(lambda: [0, 0])
+        only = set(self.watch_ids) if self.watch_ids is not None else None
+        for window in normal_windows:
+            for (can_id, field_name), values in _field_values(window, only).items():
+                if len(values) >= 2:
+                    entry = counts[self._key(can_id, field_name)]
+                    entry[1] += 1
+                    if min(values) == max(values):
+                        entry[0] += 1
+        self.frozen_counts = {k: list(v) for k, v in counts.items()}
         self.fitted = True   # needed so _raw_values can run
 
         raw_lists: Dict[str, List[float]] = {check: [] for check in CHECKS}
@@ -230,7 +269,8 @@ class Stage2Model:
         raw = {check: 0.0 for check in CHECKS}
         evidence: Dict[str, str] = {}
 
-        for (can_id, field_name), values in _field_values(window).items():
+        only = set(self.watch_ids) if self.watch_ids is not None else None
+        for (can_id, field_name), values in _field_values(window, only).items():
             if not self._watched(can_id):
                 continue    # not on the watch-list
             key = self._key(can_id, field_name)
@@ -250,14 +290,24 @@ class Stage2Model:
                         f"[{low}, {high}] by {overage}"
                     )
 
-            # 2. frozen_break: normally varies, but held constant all window
-            if width > 0 and len(values) >= 2 and min(values) == max(values):
-                if width > raw["frozen_break"]:
-                    raw["frozen_break"] = float(width)
-                    evidence["frozen_break"] = (
-                        f"ID {can_id} {field_name}: frozen at {values[0]} for the whole "
-                        f"window (normally varies {low}-{high})"
-                    )
+            # 2. frozen_break: held constant for the whole window
+            if len(values) >= 2 and min(values) == max(values):
+                if self.frozen_mode == "width":
+                    if width > 0 and width > raw["frozen_break"]:
+                        raw["frozen_break"] = float(width)
+                        evidence["frozen_break"] = (
+                            f"ID {can_id} {field_name}: frozen at {values[0]} for the whole "
+                            f"window (normally varies {low}-{high})"
+                        )
+                elif key in self.frozen_counts:
+                    constant, seen = self.frozen_counts[key]
+                    surprise = -math.log((constant + 1) / (seen + 2))
+                    if surprise > raw["frozen_break"]:
+                        raw["frozen_break"] = surprise
+                        evidence["frozen_break"] = (
+                            f"ID {can_id} {field_name}: frozen at {values[0]} for the whole "
+                            f"window (constant in only {constant} of {seen} normal windows)"
+                        )
 
             # 3. large_jump
             if len(values) >= 2:
@@ -300,6 +350,8 @@ class Stage2Model:
         record = {
             "model_version": model_version,
             "watch_ids": self.watch_ids,
+            "frozen_mode": self.frozen_mode,
+            "frozen_counts": self.frozen_counts,
             "field_range": self.field_range,
             "field_max_jump": self.field_max_jump,
             "reference": self.reference,
@@ -320,7 +372,9 @@ class Stage2Model:
                 f"Model version mismatch: Stage 2 file is {record.get('model_version')!r}, "
                 f"expected {expected_model_version!r}"
             )
-        model = cls(watch_ids=record.get("watch_ids"))
+        model = cls(watch_ids=record.get("watch_ids"),
+                    frozen_mode=record.get("frozen_mode", "width"))
+        model.frozen_counts = record.get("frozen_counts", {})
         model.field_range = {k: tuple(v) for k, v in record["field_range"].items()}
         model.field_max_jump = record["field_max_jump"]
         model.reference = record["reference"]

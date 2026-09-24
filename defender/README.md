@@ -2,7 +2,7 @@
 
 The Defender looks at one window of CAN traffic and returns **one attack score**, a threshold, a decision (`ATTACK` / `ACCEPT`) and a short evidence text. It runs fully locally, with no cloud connection needed for detection.
 
-> **Status:** v1 and v2 are trained on real ROAD data using a **provisional** split. All results below are from the **development** split only. Official results come from Part 3's evidence gate on the final test set.
+> **Status:** v1 and v2 are trained on real ROAD data using a **provisional** split. v2 is the candidate for Part 3's evidence gate. A v3 hardening attempt was tested and not adopted (see below). All results below are from the **development** split only. Official results come from Part 3's evidence gate on the final test set.
 
 ---
 
@@ -84,7 +84,8 @@ data/road/attacks/capture_metadata.json
 |---|---|
 | Run all tests | `python -m pytest tests -q` |
 | Train v1 and v2 on real data | `python -m defender.run_training --max-false-alarm-rate 0.01` |
-| Development check (v1 vs v2) | `python -m defender.dev_check` |
+| Development check (v1 vs v2, and v3 if trained) + Part 3 freeze repro | `python -m defender.dev_check` |
+| Hardening experiment: train only v3 (v1 and v2 untouched) | `python -m defender.run_training --max-false-alarm-rate 0.01 --harden-v3` |
 | Local run + latency benchmark (MOCK traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
 | Diagnostic: Stage 2 on normal validation | `python -m defender.diagnose` |
 | Diagnostic: test a watch-list | `python -m defender.diagnose_watch --watch "0D0,6E0"` |
@@ -132,7 +133,7 @@ output = score_window(window)   # TrafficWindow or dict; label fields are reject
 
 ## Results: DEVELOPMENT split only
 
-Window-level counts (1 s windows, 0.5 s stride, so windows overlap). A window counts as attacked if it overlaps the injection interval.
+Window-level counts (1 s windows, 0.5 s stride, so windows overlap). A window counts as attacked if it overlaps the injection interval. Attack captures are checked in full; long ambient captures are sampled (at most 300 windows).
 
 | Attack family (normal + masquerade) | v1 detected | v2 detected |
 |---|---|---|
@@ -142,18 +143,47 @@ Window-level counts (1 s windows, 0.5 s stride, so windows overlap). A window co
 | reverse_light_off / on | 0 / 114 | 0 / 114 |
 | **All development attacks** | **12 / 310 (4%)** | **196 / 310 (63%)** |
 
-| Normal traffic | v1 false alarms | v2 false alarms |
+| Normal windows | v1 false alarms | v2 false alarms |
 |---|---|---|
 | Normal windows in attack captures + dyno_reverse | 15 / 636 | 15 / 636 |
-| dyno_exercise_all_bits (deliberately unusual) | 15 / 4344 (0.3%) | 333 / 4344 (7.7%) |
+| dyno_exercise_all_bits (deliberately unusual, 290 sampled windows) | 1 / 290 | 21 / 290 (7.2%) |
+| **Total** | **16 / 926** | **36 / 926** |
+
+An earlier run over all 4,344 exercise_all_bits windows gave the same picture: v1 15 (0.3%), v2 333 (7.7%).
 
 Validation (threshold selection, target 1%): v1 and v2 both have threshold 0.964225 and 0 / 184 false alarms.
+
+---
+
+## Red-team finding and hardening attempt (v3)
+
+**Finding (Part 3, development split):** in the first ambient_dyno_reverse window, Part 3 froze all 93 `0D0` frames at `3A710460F5000000` (bytes 1 and 5 changed in every frame; original values were ramping, e.g. `42710460F4000000`, `4A710460F3000000`). Both v1 and v2 accepted it, with exactly the same score as the untouched window.
+
+**Why v2 missed it:** the frozen values are inside the normal range, there are no jumps inside a fully frozen window, and v2's frozen check measures a field's range width, which does not make these bytes stand out.
+
+**Hardening attempt (v3):** a "rate" frozen check that scores how rare it is for a field to stay constant for a whole normal window. v3 = v1's Stage 1 + Stage 2 with this check, same captures, watch-list and false-alarm target.
+
+**Result: no improvement, so v2 remains the candidate.**
+
+| | v2 | v3 |
+|---|---|---|
+| Development detected | 196 / 310 | 196 / 310 |
+| Development false alarms | 36 / 926 | 36 / 926 |
+| Part 3 freeze repro | ACCEPT | ACCEPT |
+| Threshold | 0.964225 | 0.986371 (higher) |
+
+**Why:** `0D0` bytes 1 and 5 are constant in **7 of 574** normal training windows (about 1.2%), most likely when the vehicle is steady. A one-second freeze therefore looks like normal steady driving. v3 ranked the frozen window above about 98.8% of normal windows, which is not enough under a 1% false-alarm target. Catching it at window level would cost roughly 1.2% extra false alarms from this signal alone.
+
+**What could separate them (future work):** cross-signal context (the signal freezes while related signals keep changing) or persistence over several consecutive windows.
+
+v3 model files are not kept; the "rate" option remains in the code (`--harden-v3`) so the experiment can be reproduced.
 
 ---
 
 ## Known limitations
 
 - **Reverse-light attacks are not detected** by v1 or v2. They set a flag to a value inside the normal range learned by Stage 2.
+- **Freezing a watched signal at a plausible value is not detected** (Part 3's development finding). Within one second it looks like the vehicle holding steady (see the v3 section).
 - **Stage 1 alone catches fuzzing only** on real data. ROAD fabrication attacks do not disturb timing enough to stand out.
 - **Attacks on unwatched CAN IDs are invisible to Stage 2** (for example the coolant masquerade on `4E7`). Stage 1 may still see extra frames.
 - **Accelerator captures** contain no injected frames and are outside the main results.

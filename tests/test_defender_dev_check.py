@@ -43,3 +43,16 @@ def test_development_list_has_no_final_test_or_accelerator_captures():
     for name in DEVELOPMENT_ATTACKS:
         assert "_2" not in name and "_3" not in name
         assert "coolant" not in name and "accelerator" not in name
+
+
+def test_freeze_id_makes_a_changed_copy():
+    from defender.dev_check import freeze_id
+    w = TrafficWindow(window_id="cap40_w00000", capture_id="cap40",
+                      window_start=T0, window_end=T0 + 1.0,
+                      frames=[{"timestamp": T0 + 0.1, "can_id": "0D0", "payload": "42710460F4000000"},
+                              {"timestamp": T0 + 0.2, "can_id": "0F4", "payload": "0011"}])
+    frozen = freeze_id(w, "0D0", "3A710460F5000000")
+    assert frozen.frames[0].payload == "3A710460F5000000"
+    assert frozen.frames[1].payload == "0011"
+    assert w.frames[0].payload == "42710460F4000000"          # original unchanged
+    assert frozen.window_id == "cap40_w00000_v01"
