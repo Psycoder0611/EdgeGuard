@@ -233,7 +233,7 @@ class Stage2Model:
         normal_windows: training windows. Always used for calibration.
         range_captures: optional. The FULL frame streams of the SAME training
             captures, one iterable of (timestamp, can_id, payload) per capture
-            (e.g. road_reader.iter_frames(path)). If given, field ranges and
+            (e.g. part1.pipeline.RoadData.frames(name)). If given, field ranges and
             jump sizes are learned from EVERY frame instead of only the
             windows, which matters when windows are sampled: rare but normal
             changes are then not mistaken for attacks.

@@ -30,6 +30,8 @@ stages when present). Window collection time is NOT included; measure
 it separately.
 """
 
+import json
+import math
 import time
 from pathlib import Path
 from typing import Optional, Union
@@ -53,9 +55,16 @@ def threshold_path(model_dir, model_version: str) -> Path:
     return Path(model_dir) / f"threshold_{model_version}.json"
 
 
+def train_info_file(model_dir, model_version: str) -> Path:
+    return Path(model_dir) / f"train_info_{model_version}.json"
+
+
 class Defender:
     def __init__(self, stage1: Stage1Model, threshold: float, model_version: str,
-                stage2: Optional[Stage2Model] = None):
+                stage2: Optional[Stage2Model] = None, window_s: Optional[float] = None):
+        """window_s: the window length the models were trained on. If given,
+        score_window() refuses windows of any other length, so a model can
+        never silently score windows cut differently from its training."""
         if not isinstance(stage1, Stage1Model) or not stage1.fitted:
             raise ValueError("Defender needs a trained Stage1Model")
         if stage2 is not None and (not isinstance(stage2, Stage2Model) or not stage2.fitted):
@@ -63,22 +72,29 @@ class Defender:
         make_decision(0.0, threshold)          # validates threshold is in [0, 1]
         if not isinstance(model_version, str) or not model_version:
             raise ValueError("model_version must be a non-empty string, e.g. 'v1'")
+        if window_s is not None and window_s <= 0:
+            raise ValueError(f"window_s must be positive, got {window_s}")
         self.stage1 = stage1
         self.stage2 = stage2
         self.threshold = threshold
         self.model_version = model_version
+        self.window_s = window_s
 
     @classmethod
     def load(cls, model_dir, model_version: str) -> "Defender":
         """Load Stage 1 and its threshold for this model version. If a
         Stage 2 file also exists for this version, it is loaded too and
         the Defender fuses both (v2 behaviour); otherwise it behaves
-        exactly like v1 (Stage 1 only)."""
+        exactly like v1 (Stage 1 only). The training window length is read
+        from train_info_<version>.json when that file exists."""
         stage1 = Stage1Model.load(stage1_path(model_dir, model_version), model_version)
         threshold = load_threshold(threshold_path(model_dir, model_version), model_version)
         stage2_file = stage2_path(model_dir, model_version)
         stage2 = Stage2Model.load(stage2_file, model_version) if stage2_file.exists() else None
-        return cls(stage1, threshold, model_version, stage2=stage2)
+        info_file = train_info_file(model_dir, model_version)
+        window_s = json.loads(info_file.read_text(encoding="utf-8"))["window_s"] \
+            if info_file.exists() else None
+        return cls(stage1, threshold, model_version, stage2=stage2, window_s=window_s)
 
     def score_window(self, window: Union[TrafficWindow, dict]) -> DefenderOutput:
         """Score one window. Never modifies the window."""
@@ -88,6 +104,14 @@ class Defender:
             raise TypeError(
                 f"score_window() needs a TrafficWindow or dict, got {type(window).__name__}"
             )
+        if self.window_s is not None:
+            duration = window.window_end - window.window_start
+            if not math.isclose(duration, self.window_s, abs_tol=1e-6):
+                raise ValueError(
+                    f"window {window.window_id} is {duration} s long, but model "
+                    f"{self.model_version} was trained on {self.window_s} s windows. "
+                    f"Cut windows with part1 using the same window length."
+                )
 
         started = time.perf_counter()
         stage1_result = self.stage1.score(window)

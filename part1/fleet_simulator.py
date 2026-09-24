@@ -28,7 +28,7 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from typing import Iterator, Optional
+from typing import Iterator, Optional, Tuple
 
 from shared.schemas import Frame
 
@@ -117,6 +117,71 @@ def _to_nanoseconds(ts_text: str) -> int:
     return int(seconds) * 1_000_000_000 + int(fraction.ljust(9, "0")[:9])
 
 
+RawFrame = Tuple[int, str, str]    # (elapsed microseconds, CAN ID, payload hex)
+
+
+def iter_raw(capture_path: str, report=None) -> Iterator[RawFrame]:
+    """Stream one capture as (elapsed_us, can_id, payload) tuples.
+
+    This is the fast path every Part 1 step builds on: plain tuples, integer
+    microseconds, no pydantic object per frame (about 3x faster than Frame
+    objects; the 400 MB captures hold ~9 M frames). Frame / TrafficWindow
+    objects are only built for windows that are actually returned.
+
+    ROAD timestamps have microsecond resolution, so integer microseconds are
+    exact. The first timestamp in the file becomes 0 (see read_frames).
+
+    report: optional object with `skipped_lines` and `first_raw_timestamp`
+    attributes (e.g. part1.cleaning.CleaningReport); malformed lines are
+    counted there instead of vanishing silently.
+    """
+    first_us: Optional[int] = None
+    with open(capture_path, "r") as fh:
+        for line in fh:
+            match = _LOG_LINE.match(line)
+            if match is None:
+                if line.strip() and report is not None:
+                    report.skipped_lines += 1
+                continue                      # blank, comment or malformed
+            raw_us = _to_nanoseconds(match["ts"]) // 1000
+            if first_us is None:
+                first_us = raw_us
+                if report is not None:
+                    report.first_raw_timestamp = match["ts"]
+            yield raw_us - first_us, match["can_id"].upper(), match["payload"].upper()
+
+
+def capture_span_us(capture_path: str) -> int:
+    """Elapsed microseconds from the first to the last frame, reading only the
+    first line and the END of the file (fast even for 400 MB captures)."""
+    first = last = None
+    with open(capture_path, "r") as fh:
+        for line in fh:
+            match = _LOG_LINE.match(line)
+            if match:
+                first = _to_nanoseconds(match["ts"]) // 1000
+                break
+    with open(capture_path, "rb") as fh:
+        fh.seek(0, os.SEEK_END)
+        position = fh.tell()
+        tail = b""
+        while position > 0 and last is None:
+            step = min(4096, position)
+            position -= step
+            fh.seek(position)
+            tail = fh.read(step) + tail
+            lines = tail.decode("utf-8", errors="replace").splitlines()
+            # The first piece may be a partial line unless we reached the start.
+            for line in reversed(lines if position == 0 else lines[1:]):
+                match = _LOG_LINE.match(line)
+                if match:
+                    last = _to_nanoseconds(match["ts"]) // 1000
+                    break
+    if first is None or last is None:
+        raise ValueError(f"{capture_path} contains no CAN frames")
+    return last - first
+
+
 def read_frames(capture_path: str) -> Iterator[Frame]:
     """Stream one capture as Frames with ELAPSED timestamps.
 
@@ -127,23 +192,11 @@ def read_frames(capture_path: str) -> Iterator[Frame]:
     there, so frames, window bounds and injection_interval all share one
     clock. Raw log timestamps (~1110000000) never leave this function.
 
-    The subtraction is done in integer nanoseconds, then converted once to
+    The subtraction is done in integer microseconds, then converted once to
     float. Elapsed values are small, so that final float is precise.
     """
-    first_ns: Optional[int] = None
-    with open(capture_path, "r") as fh:
-        for line in fh:
-            match = _LOG_LINE.match(line)
-            if match is None:
-                continue                      # blank, comment or malformed
-            raw_ns = _to_nanoseconds(match["ts"])
-            if first_ns is None:
-                first_ns = raw_ns
-            yield Frame(
-                timestamp=(raw_ns - first_ns) / 1_000_000_000,
-                can_id=match["can_id"].upper(),
-                payload=match["payload"].upper(),
-            )
+    for us, can_id, payload in iter_raw(capture_path):
+        yield Frame(timestamp=us / 1_000_000, can_id=can_id, payload=payload)
 
 
 def read_capture_stats(capture_path: str) -> dict:

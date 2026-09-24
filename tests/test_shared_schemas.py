@@ -294,3 +294,24 @@ def test_rejects_invalid_interval(bad_interval, message):
             family="offset",
             injection_interval=bad_interval,
         )
+
+# ---------- vehicle_id and label details (Part 1) ---------------------
+def test_window_vehicle_id_is_optional_and_must_be_neutral():
+    assert TrafficWindow(**mock_window()).vehicle_id is None
+    assert TrafficWindow(**{**mock_window(), "vehicle_id": "veh01"}).vehicle_id == "veh01"
+    with pytest.raises(ValidationError, match="neutral"):
+        TrafficWindow(**{**mock_window(), "vehicle_id": "ambient_car"})
+
+
+def test_attack_label_carries_injected_frames_and_overlap():
+    label = GroundTruthLabel(window_id="cap07_w0012", is_attack=True, family="speed",
+                             injection_interval=[8.0, 12.0], injected_frames=3,
+                             interval_overlap_s=0.4)
+    assert label.injected_frames == 3 and label.interval_overlap_s == 0.4
+
+
+def test_normal_label_cannot_have_injected_frames():
+    with pytest.raises(ValidationError, match="must not have"):
+        GroundTruthLabel(window_id="cap07_w0001", is_attack=False, injected_frames=1)
+    with pytest.raises(ValidationError, match="must not have"):
+        GroundTruthLabel(window_id="cap07_w0001", is_attack=False, interval_overlap_s=0.2)

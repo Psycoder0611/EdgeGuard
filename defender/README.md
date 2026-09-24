@@ -2,7 +2,7 @@
 
 The Defender looks at one window of CAN traffic and returns **one attack score**, a threshold, a decision (`ATTACK` / `ACCEPT`) and a short evidence text. It runs fully locally, with no cloud connection needed for detection.
 
-> **Status:** v1 and v2 are trained on real ROAD data using a **provisional** split. v2 is the candidate for Part 3's evidence gate. A v3 hardening attempt was tested and not adopted (see below). All results below are from the **development** split only. Official results come from Part 3's evidence gate on the final test set.
+> **Status:** v1 and v2 are trained on real ROAD data using the **frozen split manifest** (`part1/split_manifest.json`) and Part 1's non-overlapping 1 s windows. v2 is the candidate for Part 3's evidence gate. A v3 hardening attempt was tested and not adopted (see below). All results below come from development captures and cross-validation only. Official results come from Part 3's evidence gate on the final test set.
 
 ---
 
@@ -11,7 +11,7 @@ The Defender looks at one window of CAN traffic and returns **one attack score**
 ```
 ROAD raw frames
       ↓
-Part 1: raw TrafficWindow  (defender/road_reader.py is a fallback until Part 1's make_windows exists)
+Part 1: cleaned, non-overlapping 1 s TrafficWindows  (part1.pipeline.RoadData)
       ↓
 Part 3 (testing only): inject attack into a COPY
       ↓
@@ -84,23 +84,23 @@ data/road/attacks/capture_metadata.json
 |---|---|
 | Run all tests | `python -m pytest tests -q` |
 | Train v1 and v2 on real data | `python -m defender.run_training --max-false-alarm-rate 0.01` |
-| Development check (v1 vs v2, and v3 if trained) + Part 3 freeze repro | `python -m defender.dev_check` |
+| Development check (v1 vs v2, and v3 if trained) + Part 3 freeze repro | `python -m defender.dev_check --data-dir <road>` |
 | Hardening experiment: train only v3 (v1 and v2 untouched) | `python -m defender.run_training --max-false-alarm-rate 0.01 --harden-v3` |
 | Local run + latency benchmark (MOCK traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
 | Diagnostic: Stage 2 on normal validation | `python -m defender.diagnose` |
 | Diagnostic: test a watch-list | `python -m defender.diagnose_watch --watch "0D0,6E0"` |
 | Cross-validation: leave-one-capture-out false alarms (ambient) | `python -m defender.crossval ambient --max-false-alarm-rate 0.01` |
-| Cross-validation: 2-fold attack CV (needs a `splits.json` with `cv_folds`) | `python -m defender.crossval attacks --max-false-alarm-rate 0.01 --split splits.json` |
+| Cross-validation: 2-fold attack CV over development recordings | `python -m defender.crossval attacks --max-false-alarm-rate 0.01 --data-dir <road>` |
 
 In PowerShell, **quote** CAN ID lists (`"0D0,6E0"`). Otherwise `6E0` is read as the number 6.
 
-Training settings (team-agreed): 1.0 s windows, 0.5 s stride, at most 100 evenly spaced windows per training capture (about 1 MB of memory per real window). Training takes a few minutes on a laptop.
+Training settings (build plan): 1.0 s **non-overlapping** windows from Part 1, at most 100 evenly spaced windows per training capture (about 1 MB of memory per real window; evaluation always scores every window). The Defender records the window length in `train_info_<version>.json` and refuses windows of any other length. Training takes a few minutes on a laptop.
 
 **Cross-validation** (`defender/crossval.py`) refits the models in every fold and never reads test captures:
 - `ambient`: leave one normal capture out. The threshold is chosen on out-of-fold scores of the remaining captures (nested leave-one-out), then false alarms are counted on the held-out capture. It gives a false-alarm estimate over every train and validation drive, not just the 2 validation drives.
-- `attacks`: fold k holds out every `_k` attack recording. The Stage 2 watch-list comes from the other fold's attack targets only, and detection is measured on the held-out fold. The provisional split has no folds (its `_2` captures are final test), so this needs `--split splits.json`.
+- `attacks`: the manifest gives every development attack recording a fold (its index, `_1` or `_2`). Fold k is held out, the Stage 2 watch-list comes from the other fold's attack targets only, and every held-out window is scored against Part 1's labels.
 
-These numbers estimate the training *procedure*. Report them beside the final-test result, never instead of it, and never use them to tune.
+These numbers estimate the training *procedure*. Use them to choose settings, and report them beside the final-test result, never instead of it. Never tune on the final test.
 
 ---
 
@@ -117,31 +117,31 @@ output = score_window(window)   # TrafficWindow or dict; label fields are reject
 
 `latency_ms` is Defender inference time only. Window collection time is not included.
 
-**Helpers for Part 1 and Part 3** (`defender/road_reader.py`):
-- `make_windows(capture_path, capture_id, window_s, stride_s)` has exactly the agreed Part 1 signature.
-- `first_timestamp(capture_path)`: ROAD `injection_interval` is in **elapsed seconds from the capture start**, so `elapsed = timestamp - first_timestamp(capture)`.
+**Windows and labels come from Part 1** (`part1.pipeline.RoadData`): window times are already **elapsed seconds from the capture start**, the same clock as ROAD's `injection_interval`, and `labelled_windows()` gives each window its private `GroundTruthLabel`.
 
 **ID format:** ROAD metadata writes `0xd0`, while the logs and schema use `0D0`. Use `defender.stage2.normalize_can_id()` to convert.
 
 ---
 
-## Provisional split
+## Split: the frozen manifest
 
-| Split | Ambient | Attacks (each with its `_masquerade` twin) |
+The split is `part1/split_manifest.json` (built by `python -m part1.split_manifest build`; see `part1/split_manifest.py`):
+
+| Group | Normal drives | Attacks |
 |---|---|---|
-| train | drive_basic_long, drive_basic_short, drive_extended_long, drive_radio_infotainment, idle_radio_infotainment, highway_street_driving_long | none |
-| validation | drive_extended_short, drive_winter | none |
-| development | dyno_reverse, dyno_exercise_all_bits | max_speedometer_1, reverse_light_off_1, reverse_light_on_1, correlated_signal_1, fuzzing_1 |
-| final_test | drive_benign_anomaly, highway_street_driving_diagnostics | max_speedometer_2/3, reverse_light_off_2/3, reverse_light_on_2/3, correlated_signal_2/3, fuzzing_2/3, max_engine_coolant_temp |
-| separate challenge | none | 4 accelerator captures (no injection interval in our metadata) |
+| train | drive_basic_long, drive_extended_long, drive_radio_infotainment, idle_radio_infotainment, exercise_all_bits, drive_winter, dyno_reverse | none |
+| validation | drive_benign_anomaly, drive_extended_short | none |
+| development | none | `_1` and `_2` of max_speedometer, reverse_light_off, reverse_light_on, correlated_signal (each with its `_masquerade` twin), fuzzing_1, fuzzing_2 |
+| final_test | drive_basic_short, highway_street_driving_diagnostics, highway_street_driving_long | all `_3` recordings, max_engine_coolant_temp (+ masquerade) |
+| separate | none | 4 accelerator captures (no injected frames) |
 
-`dyno_reverse` is kept out of training so reverse-light behaviour is not learned as normal. The coolant attack (the only pair, target `4E7`) is in final_test as an honest test of an **unwatched** target ID. Part 1 owns the official split.
+The normal-drive groups come from `~/Downloads/road/splits.json`, which assigns them by measured coverage of driving regimes. The coolant attack (target `4E7`) is in final_test as an honest test of an **unwatched** target ID. Both highway drives are in final_test, so training has no highway driving (an out-of-domain test for false alarms).
 
 ---
 
-## Results: DEVELOPMENT split only
+## Earlier results (provisional split, 0.5 s overlapping windows): superseded
 
-Window-level counts (1 s windows, 0.5 s stride, so windows overlap). A window counts as attacked if it overlaps the injection interval. Attack captures are checked in full; long ambient captures are sampled (at most 300 windows).
+These were measured before the frozen manifest and Part 1's windows existed, on the old provisional split. They are kept for the record; the models they describe have been replaced. Window-level counts (1 s windows, 0.5 s stride, so windows overlap). A window counts as attacked if it overlaps the injection interval. Attack captures are checked in full; long ambient captures are sampled (at most 300 windows).
 
 | Attack family (normal + masquerade) | v1 detected | v2 detected |
 |---|---|---|
@@ -196,7 +196,7 @@ v3 model files are not kept; the "rate" option remains in the code (`--harden-v3
 - **Attacks on unwatched CAN IDs are invisible to Stage 2** (for example the coolant masquerade on `4E7`). Stage 1 may still see extra frames.
 - **Accelerator captures** contain no injected frames and are outside the main results.
 - **More false alarms on extreme-but-benign traffic** with v2 (7.7% on `exercise_all_bits`).
-- **Provisional split and development-only results.** Final numbers come from Part 3's evidence gate on the final test.
+- **Development-only results.** Final numbers come from Part 3's evidence gate on the final test.
 - Stage 1 and Stage 2 are statistical detectors running on the CPU. On the Nano they run locally without a GPU.
 
 ---
@@ -204,7 +204,6 @@ v3 model files are not kept; the "rate" option remains in the code (`--harden-v3
 ## Pending
 
 - Nano benchmark with **real** windows (currently mock mode only).
-- Official split from Part 1, then retrain with `--overwrite` if it differs.
 - Evidence gate (Part 3): compare v1 and v2 on the final test set.
 
 ## Data citation

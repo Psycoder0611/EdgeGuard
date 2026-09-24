@@ -73,17 +73,23 @@ class Frame(StrictModel):
 class TrafficWindow(StrictModel):
     window_id: str = Field(min_length=1)  # e.g. "cap07_w0153"
     capture_id: str = Field(min_length=1)  # e.g. "cap07"
-    window_start: float
+    window_start: float    # elapsed seconds from the start of the capture
     window_end: float
     frames: List[Frame]
-    # Part 1 fills these after any injection.
-    # Confirm these value types with Part 1 before implementing preprocessing.
+    # Build plan S3: every window carries its vehicle. Part 1 always sets it;
+    # optional only so windows built by hand in tests stay valid.
+    vehicle_id: Optional[str] = Field(default=None, min_length=1)  # e.g. "veh01"
+    # Part 1 fills these after any injection (part1.pipeline.preprocess).
+    # decoded_signals: "<CAN ID>:<signal name>" -> one value per frame of that
+    # ID, in frame order. NaN = the payload is too short to hold the signal.
     features: Dict[str, float] = Field(default_factory=dict)
     decoded_signals: Dict[str, List[float]] = Field(default_factory=dict)
 
-    @field_validator("window_id", "capture_id")
+    @field_validator("window_id", "capture_id", "vehicle_id")
     @classmethod
-    def ids_are_neutral(cls, value: str, info) -> str:
+    def ids_are_neutral(cls, value: Optional[str], info) -> Optional[str]:
+        if value is None:
+            return value
         return _check_neutral_id(value, info.field_name)
 
     @model_validator(mode="after")
@@ -139,6 +145,11 @@ class GroundTruthLabel(StrictModel):
     family: Optional[str] = None
     target: Optional[str] = None
     injection_interval: Optional[List[float]] = None  # [start, end], elapsed seconds
+    # Filled by Part 1 (part1.labels): how many frames of this window were
+    # injected, and how many seconds of the window lie inside the injection
+    # interval. Lets results separate windows only partly covered by an attack.
+    injected_frames: int = Field(default=0, ge=0)
+    interval_overlap_s: Optional[float] = Field(default=None, ge=0.0)
 
     @field_validator("injection_interval")
     @classmethod
@@ -169,9 +180,11 @@ class GroundTruthLabel(StrictModel):
             )
         if not self.is_attack and (
             self.family or self.target or self.injection_interval is not None
+            or self.injected_frames or self.interval_overlap_s is not None
         ):
             raise ValueError(
                 f"window {self.window_id}: normal traffic (is_attack false) "
-                "must not have family, target or injection_interval"
+                "must not have family, target, injection_interval, "
+                "injected_frames or interval_overlap_s"
             )
         return self
