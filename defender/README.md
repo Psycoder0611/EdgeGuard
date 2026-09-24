@@ -89,10 +89,18 @@ data/road/attacks/capture_metadata.json
 | Local run + latency benchmark (MOCK traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
 | Diagnostic: Stage 2 on normal validation | `python -m defender.diagnose` |
 | Diagnostic: test a watch-list | `python -m defender.diagnose_watch --watch "0D0,6E0"` |
+| Cross-validation: leave-one-capture-out false alarms (ambient) | `python -m defender.crossval ambient --max-false-alarm-rate 0.01` |
+| Cross-validation: 2-fold attack CV (needs a `splits.json` with `cv_folds`) | `python -m defender.crossval attacks --max-false-alarm-rate 0.01 --split splits.json` |
 
 In PowerShell, **quote** CAN ID lists (`"0D0,6E0"`). Otherwise `6E0` is read as the number 6.
 
 Training settings (team-agreed): 1.0 s windows, 0.5 s stride, at most 100 evenly spaced windows per training capture (about 1 MB of memory per real window). Training takes a few minutes on a laptop.
+
+**Cross-validation** (`defender/crossval.py`) refits the models in every fold and never reads test captures:
+- `ambient`: leave one normal capture out. The threshold is chosen on out-of-fold scores of the remaining captures (nested leave-one-out), then false alarms are counted on the held-out capture. It gives a false-alarm estimate over every train and validation drive, not just the 2 validation drives.
+- `attacks`: fold k holds out every `_k` attack recording. The Stage 2 watch-list comes from the other fold's attack targets only, and detection is measured on the held-out fold. The provisional split has no folds (its `_2` captures are final test), so this needs `--split splits.json`.
+
+These numbers estimate the training *procedure*. Report them beside the final-test result, never instead of it, and never use them to tune.
 
 ---
 
