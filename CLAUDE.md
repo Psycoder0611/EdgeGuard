@@ -174,8 +174,8 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 ## What to do next (in order)
 
 1. **Finish the branch.**
-   - Delete the superseded `results/crossval_ambient_provisional.json`, `crossval_ambient_splitsjson.json` and `crossval_attacks_splitsjson.json`.
-   - Run the tests.
+   - Superseded `results/crossval_ambient_provisional.json`, `crossval_ambient_splitsjson.json` and `crossval_attacks_splitsjson.json` have been moved to `results/archive/` (see `results/archive/README.md`), kept for the record but not for citing in the demo or final report. Current reports: `results/crossval_ambient.json`, `results/crossval_attacks.json`.
+   - Run the tests (335 passed, reproducibility check passed against a fresh copy of the ROAD data, confirmed 2026-09-24).
    - Review `git diff`, with extra care on `shared/schemas.py` and `part1/`.
 2. **Get agreement** on the five decisions above (Part 1 owner, Part 3 owner).
 3. **Commit, push the branch, open a PR.** Mention in the commit message that the models were retrained.
