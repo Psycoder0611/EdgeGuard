@@ -1,0 +1,62 @@
+{
+  "data_dir": "/Users/saranyavaitheeswaran/Downloads/road",
+  "final_test_captures": [
+    "ambient_dyno_drive_basic_short",
+    "ambient_highway_street_driving_diagnostics",
+    "ambient_highway_street_driving_long",
+    "correlated_signal_attack_3",
+    "correlated_signal_attack_3_masquerade",
+    "fuzzing_attack_3",
+    "max_engine_coolant_temp_attack",
+    "max_engine_coolant_temp_attack_masquerade",
+    "max_speedometer_attack_3",
+    "max_speedometer_attack_3_masquerade",
+    "reverse_light_off_attack_3",
+    "reverse_light_off_attack_3_masquerade",
+    "reverse_light_on_attack_3",
+    "reverse_light_on_attack_3_masquerade"
+  ],
+  "windows": 5178,
+  "baseline_version": "v1",
+  "updated_version": "v2",
+  "baseline": {
+    "windows": 5178.0,
+    "tp": 1.0,
+    "fp": 20.0,
+    "tn": 4899.0,
+    "fn": 258.0,
+    "recall": 0.003861003861003861,
+    "false_alarm_rate": 0.004065867046147591,
+    "precision": 0.047619047619047616,
+    "f1": 0.007142857142857143,
+    "mean_inference_ms": 0.3100372769620036
+  },
+  "updated": {
+    "windows": 5178.0,
+    "tp": 168.0,
+    "fp": 446.0,
+    "tn": 4473.0,
+    "fn": 91.0,
+    "recall": 0.6486486486486487,
+    "false_alarm_rate": 0.09066883512909128,
+    "precision": 0.2736156351791531,
+    "f1": 0.3848797250859107,
+    "mean_inference_ms": 1.796056125933116
+  },
+  "baseline_recall_by_family": {
+    "correlated_signal": 0.0,
+    "fuzzing": 1.0,
+    "max_engine_coolant_temp": 0.0,
+    "max_speedometer": 0.0,
+    "reverse_light_off": 0.0,
+    "reverse_light_on": 0.0
+  },
+  "updated_recall_by_family": {
+    "correlated_signal": 1.0,
+    "fuzzing": 1.0,
+    "max_engine_coolant_temp": 0.0,
+    "max_speedometer": 1.0,
+    "reverse_light_off": 0.0,
+    "reverse_light_on": 0.3958333333333333
+  }
+}

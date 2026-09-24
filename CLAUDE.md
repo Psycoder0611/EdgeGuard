@@ -60,6 +60,7 @@ Run from the repo root. The environment is a local `.venv` (gitignored): `python
 | Latency benchmark (mock traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
 | Latency benchmark (real traffic) | `python -m defender.nano_runner --model-version v1 --data-dir <road> --group validation --output results/nano_benchmark_REAL_v1.json` (also v2; `--group` is train/validation/development, never final_test/separate) |
 | Integration demo (Block 4, one command) | `python -m integration.run_demo --model-version v2 --data-dir <road>` (both paths; `--mode ordinary`/`--mode test` for just one, `--test-families freeze,offset`, `--evasion-log <path>`) |
+| **Final evaluation (Block 5, run ONCE)** | `python -m integration.run_final_evaluation --baseline-version v1 --updated-version v2 --data-dir <road>` -- the only place in the codebase allowed to touch `final_test`. Refuses to overwrite `results/final_evaluation.json` without `--force`. |
 | Dashboard | `cd dashboard && npm install && npm run dev` |
 
 The false-alarm rate has no default on purpose: it is a team decision (0.01 has been used so far).
@@ -138,6 +139,47 @@ v2 from ACCEPT (score 0.96) to ATTACK (score 0.999, `out_of_range` evidence).
   investigated -- these are generic Red Team proposals, not targeted at the `0D0`/`6E0`
   watch-list, so this is a rougher, broader test than the hand-targeted example above, closer
   to a stress test than a calibrated benchmark.
+
+### Final evaluation (`integration/run_final_evaluation.py`): Block 5, RUN on 2026-09-24 -- `results/final_evaluation.json`
+- The one-time, held-out v1-vs-v2 comparison on `final_test` (build plan S9). `run_final_evaluation()`
+  is the only place in the codebase that constructs `RoadData(..., final_evaluation=True)`; it uses
+  `evidence_gate.compare_final_models()` for the overlap/consistency checks. This has now been spent --
+  do not rerun without `--force` and a stated reason; a real code or model change gets a new version to
+  compare, not a redo of v1-vs-v2.
+- 14 final_test captures, 5178 windows.
+
+| | v1 (baseline) | v2 (updated) |
+|---|---|---|
+| Recall | 0.39 % (1 / 259) | **64.9 %** (168 / 259) |
+| False alarms | 20 / 4919 = 0.41 % | **446 / 4919 = 9.07 %** |
+| Precision | 4.8 % | 27.4 % |
+| F1 | 0.7 % | 38.5 % |
+| Mean inference | 0.31 ms | 1.80 ms |
+
+Recall by family:
+
+| | v1 | v2 |
+|---|---|---|
+| correlated_signal | 0 % | **100 %** |
+| max_speedometer | 0 % | **100 %** |
+| fuzzing | 100 % | 100 % |
+| reverse_light_on | 0 % | 39.6 % |
+| reverse_light_off | 0 % | **0 %** |
+| max_engine_coolant_temp | 0 % | **0 %** |
+
+- **The headline v1-vs-v2 story holds on the real final test**: v2's Stage 2 payload check is the
+  reason it catches anything beyond fuzzing, exactly as claimed everywhere else in this doc.
+- **But v2's false-alarm rate on final_test (9.07 %) is far above the 1 % target** used for training
+  and validation, and roughly 3x the 3.9 % leave-one-out figure -- worse than any single ambient
+  drive examined during cross-validation. Don't quote v2 as "meets the false-alarm target" without
+  this caveat.
+- **max_engine_coolant_temp is 0 % for both models.** This is exactly the risk flagged in "Known
+  problems and limits" #5: coolant (`4E7`) is the one final-test attack target that never appears in
+  development, and the result confirms the watch-list (`0D0`, `6E0`) does not generalize to it. v2's
+  gains are real but concentrated on IDs it was effectively already tuned for.
+- **reverse_light_off stays at 0 % for v2**, consistent with the development-set miss noted above (the
+  reverse-light bit-flip needs decoded-signal checking that Stage 2 doesn't have yet).
+- Calibrated tests: `tests/test_run_final_evaluation.py` (7 tests, fake data only, all passing).
 
 ## Results (frozen manifest, Part 1 windows and labels)
 
@@ -219,7 +261,7 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90, e.g. with percentile bounds or more regime coverage in train (a manifest change is a team decision).
 7. **Report the plan's metrics:** false alarms per hour (already in the cross-validation reports), detection delay per attack (time to first alert after the interval starts), recall for fully vs partly covered windows (`interval_overlap_s`).
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
-9. **Final evaluation, once:** freeze models, then score final_test with `RoadData(..., final_evaluation=True)` (v1 vs v2, including regressions).
+9. **Done, 2026-09-24:** the one-time final_test v1-vs-v2 comparison has been run (see the Final evaluation section above, `results/final_evaluation.json`). Headline: v2 recall 64.9% vs v1 0.39%, but v2's false-alarm rate on final_test is 9.07% (well above the 1% target) and it still misses max_engine_coolant_temp (the one unseen-target attack) and reverse_light_off entirely. Worth digging into before presenting this as a clean win.
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
 11. **Done:** Block 3 (`part3/`, freeze + offset) and Block 4 integration (`integration/run_demo.py`, one command runs both the ordinary and test paths). See the Part 3 / Integration sections above for real-data numbers, including the unexplained 29.7% false-alarm rate on generic (non-watch-list-targeted) Red Team attacks, which is worth digging into before the demo.
 12. **Later:** connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
