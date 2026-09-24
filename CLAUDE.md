@@ -10,7 +10,7 @@ EdgeGuard is an on-vehicle CAN bus intrusion detector, built on the ROAD dataset
 |---|---|---|
 | Part 1 | Reading captures, cleaning, windowing, labels, decoded signals, the split | `part1/` |
 | Part 2 | The Defender: detection models, training, threshold, cross-validation | `defender/` |
-| Part 3 | Red team, injector, evaluator, evidence gate | not in this repo yet |
+| Part 3 | Red team, injector, evaluator, evidence gate | `part3/` |
 | Member 4 | Dashboard and demo UI | `dashboard/` |
 | Shared | Data contracts between parts | `shared/schemas.py` |
 
@@ -59,6 +59,7 @@ Run from the repo root. The environment is a local `.venv` (gitignored): `python
 | 2-fold attack CV (development) | `python -m defender.crossval attacks --max-false-alarm-rate 0.01 --data-dir <road>` |
 | Latency benchmark (mock traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
 | Latency benchmark (real traffic) | `python -m defender.nano_runner --model-version v1 --data-dir <road> --group validation --output results/nano_benchmark_REAL_v1.json` (also v2; `--group` is train/validation/development, never final_test/separate) |
+| Integration demo (Block 4, one command) | `python -m integration.run_demo --model-version v2 --data-dir <road>` (both paths; `--mode ordinary`/`--mode test` for just one, `--test-families freeze,offset`, `--evasion-log <path>`) |
 | Dashboard | `cd dashboard && npm install && npm run dev` |
 
 The false-alarm rate has no default on purpose: it is a team decision (0.01 has been used so far).
@@ -103,10 +104,40 @@ Everyone gets data through **`part1.pipeline.RoadData`**: `windows()`, `labelled
 - `Defender.load()` reads the window length from `train_info_<version>.json`, and `score_window()` **refuses windows of any other length**.
 - `stage2.py`: full-capture range stats are computed once per capture and reused across folds (`capture_range_stats`, `merge_range_stats`), giving an identical model.
 - **v1 and v2 were retrained** on the manifest (`models/*_v1.json`, `*_v2.json` overwritten; they had never been final-evaluated).
-- `nano_runner.py`: latency benchmark, **mock traffic only** (unchanged).
+- `nano_runner.py`: latency benchmark, mock traffic **or real ROAD windows** (`--model-version`, see the Commands table).
 
 ### Dashboard (`dashboard/`): mock data only
 React + Vite, KPI tab, live architecture diagram, fleet view. Reads mock `DefenderOutput` records; it isn't connected to the real Defender yet.
+
+### Part 3 (`part3/`): red team attacker + injector, both attack families
+Ported forward from the unmerged `part3-red-team` branch (`fb98314`), which had drifted too
+far from current `main` to merge (it predated `part1.pipeline`/`RoadData` entirely). The
+design (evaluator, metrics, evasion log, hardening set, evidence gate) is unchanged from that
+branch; `attack_spec.py`/`attack_injector.py`/`attack_validator.py`/`red_team_agent.py` were
+updated for current interfaces and gained the **second attack family** the build plan calls
+for:
+- **freeze** (original) -- stops a changing CAN payload.
+- **offset** (new) -- pushes one payload byte toward an extreme by a bounded signed delta,
+  clamped to 0-255. Targets exactly what `stage2.py` already checks per byte (`out_of_range`).
+
+`red_team_agent.propose(window, family)` and `attack_injector.inject(window, spec)` dispatch
+by family. Confirmed on real ROAD data: a targeted offset attack on the watched ID `0D0` flips
+v2 from ACCEPT (score 0.96) to ATTACK (score 0.999, `out_of_range` evidence).
+
+### Integration (`integration/run_demo.py`): Block 4, one command, both paths
+- **Ordinary path**: replay (`RoadData` via `nano_runner.real_windows`) -> preprocess ->
+  `Defender.score_window` -> `SimulatedConsumer` decision (ALERT/ISOLATION or FORWARD).
+- **Test path**: replay of DEVELOPMENT captures only (Red Team's own rule) -> `propose` an
+  attack -> `inject` it into a copy -> score both the attacked window and its unmodified
+  pair (a negative control) -> `part3.evaluator` + `part3.metrics` report real recall
+  (overall and by family) and false-alarm rate, since the label is known for certain here.
+  Optional `--evasion-log` appends confirmed misses via `part3.evasion_log`.
+- Confirmed on real ROAD data (development captures, 837 windows x 2 families): v1 (Stage 1
+  only) recall 2.6%; v2 (Stage 1 + Stage 2) recall 22.8% overall (15.8% freeze, 29.7% offset),
+  false-alarm rate 29.7% on paired normal controls. That false-alarm rate is high and not yet
+  investigated -- these are generic Red Team proposals, not targeted at the `0D0`/`6E0`
+  watch-list, so this is a rougher, broader test than the hand-targeted example above, closer
+  to a stress test than a calibrated benchmark.
 
 ## Results (frozen manifest, Part 1 windows and labels)
 
@@ -190,7 +221,8 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
 9. **Final evaluation, once:** freeze models, then score final_test with `RoadData(..., final_evaluation=True)` (v1 vs v2, including regressions).
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
-11. **Later:** connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
+11. **Done:** Block 3 (`part3/`, freeze + offset) and Block 4 integration (`integration/run_demo.py`, one command runs both the ordinary and test paths). See the Part 3 / Integration sections above for real-data numbers, including the unexplained 29.7% false-alarm rate on generic (non-watch-list-targeted) Red Team attacks, which is worth digging into before the demo.
+12. **Later:** connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
 
 ## Rules for any code touching data
 
