@@ -58,6 +58,7 @@ Run from the repo root. The environment is a local `.venv` (gitignored): `python
 | Leave-one-out false alarms (normal drives) | `python -m defender.crossval ambient --max-false-alarm-rate 0.01 --data-dir <road>` |
 | 2-fold attack CV (development) | `python -m defender.crossval attacks --max-false-alarm-rate 0.01 --data-dir <road>` |
 | Latency benchmark (mock traffic) | `python -m defender.nano_runner --mock --output results/nano_benchmark_MOCK.json` |
+| Latency benchmark (real traffic) | `python -m defender.nano_runner --model-version v1 --data-dir <road> --group validation --output results/nano_benchmark_REAL_v1.json` (also v2; `--group` is train/validation/development, never final_test/separate) |
 | Dashboard | `cd dashboard && npm install && npm run dev` |
 
 The false-alarm rate has no default on purpose: it is a team decision (0.01 has been used so far).
@@ -188,7 +189,8 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 7. **Report the plan's metrics:** false alarms per hour (already in the cross-validation reports), detection delay per attack (time to first alert after the interval starts), recall for fully vs partly covered windows (`interval_overlap_s`).
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
 9. **Final evaluation, once:** freeze models, then score final_test with `RoadData(..., final_evaluation=True)` (v1 vs v2, including regressions).
-10. **Later:** real-traffic Nano benchmark (`nano_runner` real mode), connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
+10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
+11. **Later:** connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
 
 ## Rules for any code touching data
 
