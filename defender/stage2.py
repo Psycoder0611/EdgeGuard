@@ -136,6 +136,24 @@ def _field_values(window: TrafficWindow, only_ids=None) -> Dict[Tuple[str, str],
 FROZEN_MODES = ("width", "rate")
 
 
+RangeStats = Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]   # low, high, max_jump
+
+
+def merge_range_stats(stats: Iterable[RangeStats]) -> RangeStats:
+    """Combine per-capture (low, high, max_jump) into one: min, max, max."""
+    low: Dict[str, int] = {}
+    high: Dict[str, int] = {}
+    jump: Dict[str, int] = {}
+    for lo, hi, ju in stats:
+        for k, v in lo.items():
+            low[k] = min(low.get(k, v), v)
+        for k, v in hi.items():
+            high[k] = max(high.get(k, v), v)
+        for k, v in ju.items():
+            jump[k] = max(jump.get(k, v), v)
+    return low, high, jump
+
+
 class Stage2Model:
     def __init__(self, watch_ids: Optional[Iterable[str]] = None,
                  frozen_mode: str = "width"):
@@ -165,8 +183,50 @@ class Stage2Model:
         return self.watch_ids is None or can_id in self.watch_ids
 
     # ---------- training ----------------------------------------------
+    def capture_range_stats(self, capture: Iterable[Tuple[float, str, str]]) -> RangeStats:
+        """Field ranges and largest jumps of ONE full capture (watched IDs only).
+
+        Returns (low, high, max_jump), three dicts keyed "ID|field". Stats of
+        several captures combine exactly by min / max / max (merge_range_stats),
+        so cross-validation can read each capture once and reuse the result in
+        every fold instead of re-reading the logs per fold.
+        """
+        low: Dict[str, int] = {}
+        high: Dict[str, int] = {}
+        max_jump: Dict[str, int] = defaultdict(int)
+        last_payload: Dict[str, str] = {}
+        last_value: Dict[str, int] = {}
+        for _, can_id, payload in capture:
+            can_id = can_id.upper()
+            if not self._watched(can_id):
+                continue          # not on the watch-list
+            if last_payload.get(can_id) == payload:
+                continue          # identical payload: no new range or jump
+            last_payload[can_id] = payload
+            for name, value in _payload_fields(_payload_bytes(payload)):
+                key = can_id + "|" + name
+                previous = last_value.get(key)
+                if previous == value:
+                    continue      # this field did not change
+                last_value[key] = value
+                if previous is None:
+                    if key not in low or value < low[key]:
+                        low[key] = value
+                    if key not in high or value > high[key]:
+                        high[key] = value
+                    continue
+                if value < low[key]:
+                    low[key] = value
+                elif value > high[key]:
+                    high[key] = value
+                jump = value - previous if value > previous else previous - value
+                if jump > max_jump[key]:
+                    max_jump[key] = jump
+        return low, high, dict(max_jump)
+
     def fit(self, normal_windows: List[TrafficWindow],
-            range_captures: Optional[Iterable[Iterable[Tuple[float, str, str]]]] = None
+            range_captures: Optional[Iterable[Iterable[Tuple[float, str, str]]]] = None,
+            range_stats: Optional[Iterable[RangeStats]] = None,
             ) -> "Stage2Model":
         """Learn normal payload content from NORMAL TRAINING data only.
 
@@ -177,6 +237,9 @@ class Stage2Model:
             jump sizes are learned from EVERY frame instead of only the
             windows, which matters when windows are sampled: rare but normal
             changes are then not mistaken for attacks.
+        range_stats: optional, instead of range_captures. Precomputed
+            capture_range_stats() of the SAME training captures, from a
+            Stage2Model with the SAME watch-list. Gives an identical model.
         """
         if not isinstance(normal_windows, (list, tuple)) or len(normal_windows) < 2:
             raise ValueError("fit() needs a list of at least 2 normal training windows")
@@ -185,6 +248,8 @@ class Stage2Model:
                 raise TypeError(
                     f"normal_windows[{i}] is {type(window).__name__}, expected TrafficWindow"
                 )
+        if range_captures is not None and range_stats is not None:
+            raise ValueError("pass range_captures or range_stats, not both")
 
         low: Dict[str, int] = {}
         high: Dict[str, int] = {}
@@ -197,41 +262,18 @@ class Stage2Model:
                 if abs(b - a) > max_jump[key]:
                     max_jump[key] = abs(b - a)
 
-        if range_captures is None:
+        if range_captures is not None:
+            range_stats = [self.capture_range_stats(c) for c in range_captures]
+        if range_stats is None:
             for window in normal_windows:
                 for (can_id, field_name), values in _field_values(window).items():
                     if self._watched(can_id):
                         update(self._key(can_id, field_name), values)
         else:
-            for capture in range_captures:
-                last_payload: Dict[str, str] = {}
-                last_value: Dict[str, int] = {}
-                for _, can_id, payload in capture:
-                    can_id = can_id.upper()
-                    if not self._watched(can_id):
-                        continue          # not on the watch-list
-                    if last_payload.get(can_id) == payload:
-                        continue          # identical payload: no new range or jump
-                    last_payload[can_id] = payload
-                    for name, value in _payload_fields(_payload_bytes(payload)):
-                        key = can_id + "|" + name
-                        previous = last_value.get(key)
-                        if previous == value:
-                            continue      # this field did not change
-                        last_value[key] = value
-                        if previous is None:
-                            if key not in low or value < low[key]:
-                                low[key] = value
-                            if key not in high or value > high[key]:
-                                high[key] = value
-                            continue
-                        if value < low[key]:
-                            low[key] = value
-                        elif value > high[key]:
-                            high[key] = value
-                        jump = value - previous if value > previous else previous - value
-                        if jump > max_jump[key]:
-                            max_jump[key] = jump
+            merged = merge_range_stats(range_stats)
+            low.update(merged[0])
+            high.update(merged[1])
+            max_jump.update(merged[2])
             # Windows come from the same captures, but include them too so no
             # field seen in calibration is missing a range.
             for window in normal_windows:
