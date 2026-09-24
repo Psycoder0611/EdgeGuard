@@ -41,7 +41,7 @@ from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Tuple
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from defender.defender import stage1_path, stage2_path, threshold_path
+from defender.defender import stage1_path, stage2_path, threshold_path, train_info_file
 from defender.fusion import fuse
 from defender.stage1 import Stage1Model
 from defender.stage2 import Stage2Model
@@ -52,7 +52,7 @@ MakeWindows = Callable[[str, str, float, float], Iterator[TrafficWindow]]
 
 
 def train_info_path(model_dir, model_version: str) -> Path:
-    return Path(model_dir) / f"train_info_{model_version}.json"
+    return train_info_file(model_dir, model_version)
 
 
 class TrainingReport(BaseModel):

@@ -174,3 +174,24 @@ def test_score_window_uses_active_defender(defender, monkeypatch):
 def test_set_active_defender_rejects_wrong_type():
     with pytest.raises(TypeError):
         set_active_defender("not a defender")
+
+# ---------- Window length guard ---------------------------------------
+def test_refuses_windows_cut_differently_from_training(trained):
+    stage1, threshold = trained
+    guarded = Defender(stage1, threshold, "v1", window_s=1.0)
+    assert guarded.score_window(make_normal_window(120)).window_id == "cap01_w0120"
+    half = make_normal_window(121).model_dump()
+    half["window_end"] = half["window_start"] + 0.5
+    half["frames"] = [f for f in half["frames"] if f["timestamp"] <= half["window_end"]]
+    with pytest.raises(ValueError, match="trained on 1.0 s windows"):
+        guarded.score_window(half)
+
+
+def test_load_reads_window_length_from_train_info(trained, tmp_path):
+    import json
+    stage1, threshold = trained
+    stage1.save(tmp_path / "stage1_v1.json", "v1")
+    save_threshold(threshold, "v1", tmp_path / "threshold_v1.json")
+    assert Defender.load(tmp_path, "v1").window_s is None          # no train_info: no guard
+    (tmp_path / "train_info_v1.json").write_text(json.dumps({"window_s": 1.0}))
+    assert Defender.load(tmp_path, "v1").window_s == 1.0

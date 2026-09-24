@@ -10,8 +10,7 @@ Usage:  python -m defender.diagnose_watch --watch 0D0,6E0
 import argparse
 from collections import Counter
 
-from defender.road_reader import make_windows
-from defender.run_training import PROVISIONAL_SPLIT, keep_every_for, neutral_ids
+from part1.pipeline import RoadData
 from defender.stage2 import Stage2Model, _field_values
 
 
@@ -25,12 +24,10 @@ def main(argv=None):
     missing = [i for i in watch if not any(k.startswith(i + "|") for k in model.field_range)]
     print(f"Watch-list: {sorted(watch)}   (never seen in training: {missing or 'none'})")
 
-    ids = neutral_ids()
+    road = RoadData("data/road")
     total, flagged, reasons = 0, 0, Counter()
-    for name in PROVISIONAL_SPLIT["validation"]:
-        path = f"data/road/ambient/{name}.log"
-        step = keep_every_for(path, 1.0, 0.5, 100)
-        for window in make_windows(path, ids[name], 1.0, 0.5, keep_every=step):
+    for name in road.manifest.names("validation"):
+        for window in road.windows(name, keep_every=road.keep_every(name, 100)):
             total += 1
             hit = None
             for (can_id, field), values in _field_values(window).items():

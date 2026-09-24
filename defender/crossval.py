@@ -1,11 +1,13 @@
 """
 Cross-validation for the EdgeGuard Defender (Part 2).
 
-Two protocols, both grouped by CAPTURE, never by window (windows overlap,
-so a window-level split would put near-copies on both sides).
+Two protocols, both grouped by CAPTURE, never by window (neighbouring windows
+of one drive are near-copies, so a window-level split would leak). Captures,
+groups and labels all come from Part 1: the frozen split manifest and
+part1.pipeline.RoadData.
 
 1. ambient -- leave-one-capture-out (LOCO) false-alarm estimate.
-   Pool = train + validation ambient captures. For each held-out capture H:
+   Pool = train + validation normal drives. For each held-out capture H:
      a. inner LOCO over the rest: fit on (rest minus J), score J. This gives
         OUT-OF-FOLD scores for every capture in the rest, and the threshold
         is chosen on those (choose_threshold, same false-alarm target).
@@ -16,95 +18,46 @@ so a window-level split would put near-copies on both sides).
    false-alarm on a drive it has never seen?" v1 (Stage 1) and v2 (Stage 1 +
    Stage 2, fused) are both measured from the same fits.
 
-2. attacks -- 2-fold index-out CV (the cv_folds of splits.json). Fold k holds
-   out every _k attack recording. The Stage 2 watch-list comes from the
-   target IDs of the OTHER fold's attacks only. Stage 1 and Stage 2 are
-   fitted on train ambient and the threshold on validation ambient, exactly
-   as run_training does. Detection is measured on the held-out fold.
-   Needs a split file with cv_folds: the provisional split has none (its _2
-   and _3 attack captures are final_test).
+2. attacks -- 2-fold CV over the DEVELOPMENT attack recordings. The manifest
+   gives each one a fold (its index: _1 or _2). The Stage 2 watch-list comes
+   from the target IDs of the OTHER fold's attacks only. Stage 1 and Stage 2
+   are fitted on train drives and the threshold on validation drives, exactly
+   as run_training does. Every window of the held-out fold is scored and
+   labelled by Part 1 (attacked = holds an injected frame).
    A masquerade capture is byte-identical to its fabrication twin outside the
    injection interval, so it contributes only its attacked windows; normal
    windows are counted once, from the fabrication capture.
 
 What this is NOT: a replacement for the frozen-model final-test number. It
-estimates the PROCEDURE (each fold has its own models and threshold).
-Report both, labelled, and never use these numbers to tune the final model.
-
-TEST captures (final_test / test) are never read: every capture path goes
-through capture_path(), which refuses them.
+estimates the PROCEDURE (each fold has its own models and threshold). Use it
+to choose settings, report it beside the final-test number, and never tune
+on the final test. final_test / separate captures are never read: RoadData
+refuses them.
 
 Usage (from the EdgeGuard folder, .venv active):
     python -m defender.crossval ambient --max-false-alarm-rate 0.01 \\
         --data-dir ~/Downloads/road/dataset
     python -m defender.crossval attacks --max-false-alarm-rate 0.01 \\
-        --data-dir ~/Downloads/road/dataset --split ~/Downloads/road/splits.json
+        --data-dir ~/Downloads/road/dataset
 """
 
 import argparse
 import json
 import math
-import re
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional
+from typing import Dict, List
 
-from defender.dev_check import overlaps
 from defender.fusion import fuse
-from defender.road_reader import first_timestamp, iter_frames, make_windows
-from defender.run_training import (DEVELOPMENT_WATCH_IDS, PROVISIONAL_SPLIT,
-                                   keep_every_for, neutral_ids)
 from defender.stage1 import Stage1Model
 from defender.stage2 import Stage2Model, normalize_can_id
 from defender.threshold import choose_threshold
+from defender.run_training import DEVELOPMENT_WATCH_IDS
+from part1.labels import injection_rule
+from part1.pipeline import RoadData
+from part1.split_manifest import MANIFEST_PATH, load_manifest
 
 VERSIONS = ("v1", "v2")   # v1 = Stage 1 score, v2 = Stage 1 + Stage 2 fused
-
-
-# ---------------------------------------------------------------------
-# Split
-# ---------------------------------------------------------------------
-@dataclass(frozen=True)
-class Split:
-    source: str                              # "provisional" or the splits.json path
-    ambient: Dict[str, List[str]]            # train, validation, development, final_test
-    attack_folds: Optional[Dict[int, List[str]]]   # fold -> attack captures it holds out
-    forbidden: FrozenSet[str]                # TEST captures: never read
-
-
-def provisional_split() -> Split:
-    return Split("provisional", {k: list(v) for k, v in PROVISIONAL_SPLIT.items()},
-                 None, frozenset(PROVISIONAL_SPLIT["final_test"]))
-
-
-def load_split(path) -> Split:
-    """Read splits.json (schema_version 2): train / val / test and cv_folds."""
-    record = json.loads(Path(path).read_text(encoding="utf-8"))
-    if record.get("schema_version") != 2:
-        raise ValueError(f"{path}: expected schema_version 2, got {record.get('schema_version')}")
-    test = record["test"]
-    forbidden = frozenset(test.get("ambient", []) + test.get("attacks", []))
-    ambient = {"train": list(record["train"]["ambient"]),
-               "validation": list(record["val"]["ambient"]),
-               "development": [],
-               "final_test": list(test.get("ambient", []))}
-    folds = None
-    cv = record.get("cv_folds")
-    if cv:
-        folds = {1: list(cv["fold_1_holds_out"]), 2: list(cv["fold_2_holds_out"])}
-        leaked = sorted(forbidden & set(folds[1] + folds[2]))
-        if leaked:
-            raise ValueError(f"{path}: cv_folds contain TEST captures {leaked}")
-        if set(folds[1]) & set(folds[2]):
-            raise ValueError(f"{path}: a capture is held out by both folds")
-    return Split(str(path), ambient, folds, forbidden)
-
-
-def capture_path(data_dir, split: Split, name: str, folder: str = "ambient") -> Path:
-    """Path of one capture. Refuses TEST captures, so they can never be read."""
-    if name in split.forbidden:
-        raise ValueError(f"{name} is a TEST capture: cross-validation never reads test data")
-    return Path(data_dir) / folder / f"{name}.log"
+CONDITIONS = ("fabrication", "masquerade", "fuzzing")
 
 
 # ---------------------------------------------------------------------
@@ -131,27 +84,28 @@ def binomial_upper_95(k: int, n: int) -> float:
     return hi
 
 
-def _summary(alarms: int, windows: int, target: float) -> dict:
+def _summary(alarms: int, windows: int, target: float, window_s: float) -> dict:
+    hours = windows * window_s / 3600
     return {"alarms": alarms, "windows": windows,
             "false_alarm_rate": round(alarms / windows, 6) if windows else None,
             "false_alarm_rate_95_upper": round(binomial_upper_95(alarms, windows), 6),
+            "normal_hours": round(hours, 4),
+            "false_alarms_per_hour": round(alarms / hours, 3) if hours else None,
             "target": target}
 
 
 # ---------------------------------------------------------------------
 # Data loading (each capture read once, reused by every fold)
 # ---------------------------------------------------------------------
-def load_ambient(names, data_dir, split, ids, window_s, stride_s, max_windows, stats_watch,
-                 log=print):
+def load_ambient(road: RoadData, names, max_windows, stats_watch, log=print):
     """Sampled windows and Stage 2 full-capture range stats per capture."""
     probe = Stage2Model(watch_ids=stats_watch)
     windows, stats = {}, {}
     for name in names:
-        path = capture_path(data_dir, split, name)
-        step = keep_every_for(path, window_s, stride_s, max_windows)
-        windows[name] = list(make_windows(path, ids[name], window_s, stride_s, keep_every=step))
-        stats[name] = probe.capture_range_stats(iter_frames(path))
-        log(f"  {ids[name]}: {len(windows[name])} windows (every {step}th)")
+        step = road.keep_every(name, max_windows)
+        windows[name] = list(road.windows(name, keep_every=step))
+        stats[name] = probe.capture_range_stats(road.frames(name))
+        log(f"  {road.capture_id(name)}: {len(windows[name])} windows (every {step}th)")
     return windows, stats
 
 
@@ -184,10 +138,10 @@ def score_both(stage1, stage2, windows) -> Dict[str, List[float]]:
 
 
 # ---------------------------------------------------------------------
-# Protocol 1: leave-one-capture-out over ambient
+# Protocol 1: leave-one-capture-out over normal drives
 # ---------------------------------------------------------------------
 def ambient_loco(names, windows, stats, max_false_alarm_rate, watch, frozen_mode="width",
-                 log=print) -> dict:
+                 window_s=1.0, log=print) -> dict:
     """Nested LOCO: out-of-fold threshold on the rest, false alarms on the held-out one."""
     if len(names) < 3:
         raise ValueError(f"leave-one-out needs at least 3 captures, got {len(names)}")
@@ -216,55 +170,42 @@ def ambient_loco(names, windows, stats, max_false_alarm_rate, watch, frozen_mode
     summary = {}
     for v in VERSIONS:
         alarms = sum(r[f"{v}_alarms"] for r in rows)
-        summary[v] = {**_summary(alarms, total, max_false_alarm_rate),
+        summary[v] = {**_summary(alarms, total, max_false_alarm_rate, window_s),
                       "captures_over_target": sum(
                           1 for r in rows
                           if r["windows"] and r[f"{v}_alarms"] / r["windows"] > max_false_alarm_rate)}
-    return {"protocol": "ambient leave-one-capture-out, out-of-fold threshold",
+    return {"protocol": "normal-drive leave-one-capture-out, out-of-fold threshold",
             "captures": len(rows), "per_capture": rows, "summary": summary}
 
 
 # ---------------------------------------------------------------------
-# Protocol 2: 2-fold index-out CV over attack recordings
+# Protocol 2: 2-fold CV over development attack recordings
 # ---------------------------------------------------------------------
-def attack_type(name: str) -> str:
-    """'max_speedometer_attack_1_masquerade' -> 'max_speedometer_attack'."""
-    return re.sub(r"_\d+(_masquerade)?$", "", name)
-
-
-def fold_watch_ids(train_attacks, metadata) -> List[str]:
-    """Stage 2 watch-list: target IDs of the TRAINING fold's attacks only."""
-    ids = set()
-    for name in train_attacks:
-        target = metadata[name].get("injection_id")
-        if target and str(target).upper() != "XXX":
-            ids.add(normalize_can_id(target))
+def fold_watch_ids(road: RoadData, train_attacks) -> List[str]:
+    """Stage 2 watch-list: target IDs of the TRAINING fold's attacks only
+    (fuzzing and accelerator captures have no single target)."""
+    ids = {injection_rule(road.manifest.entry(n), road.road_metadata).target
+           for n in train_attacks}
+    ids.discard(None)
     if not ids:
         raise ValueError("training fold has no targeted attacks: cannot build a watch-list")
     return sorted(ids)
 
 
-def attack_cv(split, data_dir, metadata, max_false_alarm_rate, window_s, stride_s,
-              max_windows, frozen_mode="width", log=print) -> dict:
-    if not split.attack_folds:
-        raise ValueError(
-            "this split has no cv_folds. The provisional split puts the _2/_3 attack "
-            "captures in final_test, so attack CV would read test data. Pass --split "
-            "with a splits.json that defines cv_folds.")
-    folds = split.attack_folds
-    watches = {k: fold_watch_ids([n for f, c in folds.items() if f != k for n in c], metadata)
+def attack_cv(road: RoadData, max_false_alarm_rate, max_windows, frozen_mode="width",
+              log=print) -> dict:
+    folds = road.manifest.development_folds()
+    if len(folds) < 2:
+        raise ValueError(f"attack CV needs at least 2 development folds, got {sorted(folds)}")
+    watches = {k: fold_watch_ids(road, [n for f, c in folds.items() if f != k for n in c])
                for k in folds}
     union = sorted({i for w in watches.values() for i in w})
 
-    ids = neutral_ids(split.ambient)
-    train_names, val_names = split.ambient["train"], split.ambient["validation"]
-    log("Reading train + validation ambient captures:")
-    windows, stats = load_ambient(train_names + val_names, data_dir, split, ids, window_s,
-                                  stride_s, max_windows, union, log)
+    train_names = road.manifest.names("train")
+    val_names = road.manifest.names("validation")
+    log("Reading train + validation normal drives:")
+    windows, stats = load_ambient(road, train_names + val_names, max_windows, union, log)
     validation = [w for n in val_names for w in windows[n]]
-
-    attack_names = sorted(n for c in folds.values() for n in c)
-    attack_ids = {n: f"cap{len(ids) + i:02d}" for i, n in enumerate(attack_names, start=1)}
 
     fold_rows, capture_rows = [], []
     for k, held_out in folds.items():
@@ -276,53 +217,48 @@ def attack_cv(split, data_dir, metadata, max_false_alarm_rate, window_s, stride_
         log(f"Fold {k}: watch-list {watches[k]} (from the other fold), "
             f"holding out {len(held_out)} captures")
         for name in held_out:
-            path = capture_path(data_dir, split, name, "attacks")
-            interval = metadata[name].get("injection_interval")
-            masquerade = name.endswith("_masquerade")
-            t0 = first_timestamp(path)
-            row = {"capture_id": attack_ids[name], "fold": k, "type": attack_type(name),
-                   "condition": "masquerade" if masquerade else "fabrication",
-                   "attacked": 0, "normal": 0,
+            entry = road.manifest.entry(name)
+            row = {"capture_id": entry.capture_id, "fold": k, "family": entry.family,
+                   "condition": entry.kind, "attacked": 0, "normal": 0,
                    **{f"{v}_{c}": 0 for v in VERSIONS for c in ("detected", "false_alarms")}}
-            for window in make_windows(path, attack_ids[name], window_s, stride_s):
-                attacked = interval is not None and overlaps(window, t0, interval)
-                if masquerade and not attacked:
+            for window, label in road.labelled_windows(name):
+                if entry.kind == "masquerade" and not label.is_attack:
                     continue      # byte-identical to the fabrication twin: count once
                 scores = score_both(stage1, stage2, [window])
-                row["attacked" if attacked else "normal"] += 1
+                row["attacked" if label.is_attack else "normal"] += 1
                 for v in VERSIONS:
                     if scores[v][0] >= thresholds[v]:
-                        row[f"{v}_detected" if attacked else f"{v}_false_alarms"] += 1
+                        row[f"{v}_detected" if label.is_attack else f"{v}_false_alarms"] += 1
             capture_rows.append(row)
             log(f"  {name}: v1 {row['v1_detected']}/{row['attacked']}, "
                 f"v2 {row['v2_detected']}/{row['attacked']} attacked windows detected")
 
-    return {"protocol": "attacks 2-fold index-out CV, grouped by recording",
+    return {"protocol": "2-fold CV over development attack recordings (fold = index)",
             "folds": fold_rows, "per_capture": capture_rows,
-            "summary": _attack_summary(capture_rows, max_false_alarm_rate)}
+            "summary": _attack_summary(capture_rows, max_false_alarm_rate, road.window_s)}
 
 
-def _attack_summary(rows, target) -> dict:
-    """Per-type recall, macro-averaged over types (never pooled: one type
-    would dominate a pooled number), plus false alarms on normal windows."""
+def _attack_summary(rows, target, window_s) -> dict:
+    """Per-family recall, macro-averaged over families (never pooled: one
+    family would dominate a pooled number), plus false alarms on normal windows."""
     out = {}
     for v in VERSIONS:
-        per_type = {}
-        for condition in ("fabrication", "masquerade", "all"):
+        per_condition = {}
+        for condition in CONDITIONS + ("all",):
             recalls = {}
-            for t in sorted({r["type"] for r in rows}):
-                chosen = [r for r in rows if r["type"] == t
+            for family in sorted({r["family"] for r in rows}):
+                chosen = [r for r in rows if r["family"] == family
                           and (condition == "all" or r["condition"] == condition)]
                 attacked = sum(r["attacked"] for r in chosen)
                 if attacked:
-                    recalls[t] = round(sum(r[f"{v}_detected"] for r in chosen) / attacked, 4)
-            per_type[condition] = {
-                "per_type_recall": recalls,
+                    recalls[family] = round(sum(r[f"{v}_detected"] for r in chosen) / attacked, 4)
+            per_condition[condition] = {
+                "per_family_recall": recalls,
                 "macro_recall": round(sum(recalls.values()) / len(recalls), 4) if recalls else None}
         normal = sum(r["normal"] for r in rows)
         alarms = sum(r[f"{v}_false_alarms"] for r in rows)
-        out[v] = {**per_type,
-                  "normal_windows_in_attack_captures": _summary(alarms, normal, target)}
+        out[v] = {**per_condition,
+                  "normal_windows_in_attack_captures": _summary(alarms, normal, target, window_s)}
     return out
 
 
@@ -335,26 +271,20 @@ def main(argv=None) -> int:
     parser.add_argument("--max-false-alarm-rate", type=float, required=True,
                         help="team decision, e.g. 0.01 (no default)")
     parser.add_argument("--data-dir", default="data/road", help="ROAD folder with ambient/ attacks/")
-    parser.add_argument("--split", default="provisional",
-                        help='"provisional" (run_training.PROVISIONAL_SPLIT) or a splits.json path')
+    parser.add_argument("--manifest", default=str(MANIFEST_PATH), help="frozen split manifest")
     parser.add_argument("--window-s", type=float, default=1.0)
-    parser.add_argument("--stride-s", type=float, default=0.5)
     parser.add_argument("--max-windows-per-capture", type=int, default=100,
-                        help="ambient windows per capture, same default as run_training")
+                        help="normal-drive windows per capture, same default as run_training")
     parser.add_argument("--stage2-watch", default=",".join(DEVELOPMENT_WATCH_IDS),
                         help='ambient protocol only: watch-list, e.g. "0D0,6E0", or "all"')
     parser.add_argument("--frozen-mode", default="width", choices=("width", "rate"))
-    parser.add_argument("--include-development", action="store_true",
-                        help="ambient protocol: add development ambient captures to the pool")
     parser.add_argument("--out", help="JSON report path (default results/crossval_<protocol>.json)")
     args = parser.parse_args(argv)
     if args.max_windows_per_capture < 1:
         parser.error("--max-windows-per-capture must be at least 1")
 
-    split = provisional_split() if args.split == "provisional" else load_split(
-        Path(args.split).expanduser())
-    data_dir = Path(args.data_dir).expanduser()
-    settings = {"split": split.source, "window_s": args.window_s, "stride_s": args.stride_s,
+    road = RoadData(args.data_dir, manifest=load_manifest(args.manifest), window_s=args.window_s)
+    settings = {"manifest": str(args.manifest), "window_s": args.window_s,
                 "max_windows_per_capture": args.max_windows_per_capture,
                 "max_false_alarm_rate": args.max_false_alarm_rate,
                 "frozen_mode": args.frozen_mode}
@@ -362,29 +292,22 @@ def main(argv=None) -> int:
     if args.protocol == "ambient":
         watch = None if args.stage2_watch.strip().lower() == "all" else \
             sorted({normalize_can_id(i) for i in args.stage2_watch.split(",") if i.strip()})
-        names = split.ambient["train"] + split.ambient["validation"]
-        if args.include_development:
-            names += split.ambient["development"]
-        ids = neutral_ids(split.ambient)
-        print(f"Reading {len(names)} ambient captures:")
-        windows, stats = load_ambient(names, data_dir, split, ids, args.window_s,
-                                      args.stride_s, args.max_windows_per_capture, watch)
+        names = road.manifest.names("train", "validation")
+        print(f"Reading {len(names)} normal drives:")
+        windows, stats = load_ambient(road, names, args.max_windows_per_capture, watch)
         print(f"Leave-one-capture-out ({len(names)} outer folds, "
               f"{len(names) * (len(names) - 1)} inner fits):")
         report = ambient_loco(names, windows, stats, args.max_false_alarm_rate, watch,
-                              args.frozen_mode)
+                              args.frozen_mode, args.window_s)
         settings["stage2_watch_ids"] = watch
     else:
-        metadata = json.loads((data_dir / "attacks" / "capture_metadata.json")
-                              .read_text(encoding="utf-8"))
-        report = attack_cv(split, data_dir, metadata, args.max_false_alarm_rate,
-                           args.window_s, args.stride_s, args.max_windows_per_capture,
+        report = attack_cv(road, args.max_false_alarm_rate, args.max_windows_per_capture,
                            args.frozen_mode)
 
     report = {"settings": settings, **report,
               "note": "Procedure-level estimate: each fold has its own models and threshold. "
-                      "Report beside the frozen-model final-test number, never instead of it, "
-                      "and never use it to tune."}
+                      "Use it to choose settings; report it beside the frozen-model "
+                      "final-test number, never instead of it."}
     out = Path(args.out) if args.out else Path("results") / f"crossval_{args.protocol}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -395,12 +318,14 @@ def main(argv=None) -> int:
         if args.protocol == "ambient":
             print(f"  {v}: false alarms {s['alarms']}/{s['windows']} = {s['false_alarm_rate']} "
                   f"(95% upper {s['false_alarm_rate_95_upper']}, target {s['target']}), "
+                  f"{s['false_alarms_per_hour']}/hour, "
                   f"{s['captures_over_target']}/{report['captures']} captures over target")
         else:
             fa = s["normal_windows_in_attack_captures"]
             print(f"  {v}: macro recall fabrication {s['fabrication']['macro_recall']}, "
-                  f"masquerade {s['masquerade']['macro_recall']}; false alarms "
-                  f"{fa['alarms']}/{fa['windows']}")
+                  f"masquerade {s['masquerade']['macro_recall']}, "
+                  f"fuzzing {s['fuzzing']['macro_recall']}; "
+                  f"false alarms {fa['alarms']}/{fa['windows']}")
     print(f"Report: {out}")
     return 0
 

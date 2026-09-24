@@ -5,21 +5,18 @@ Usage: python -m defender.diagnose
 from collections import Counter
 
 from defender.defender import Defender
-from defender.road_reader import make_windows
-from defender.run_training import PROVISIONAL_SPLIT, keep_every_for, neutral_ids
+from part1.pipeline import RoadData
 
 
 def main():
     defender = Defender.load("models", "v2")
-    ids = neutral_ids()
+    road = RoadData("data/road")
     n = defender.stage2.training_windows
     normal_top = n / (n + 1)
     top_checks, flagged = Counter(), []
     total = 0
-    for name in PROVISIONAL_SPLIT["validation"]:
-        path = f"data/road/ambient/{name}.log"
-        step = keep_every_for(path, 1.0, 0.5, 100)
-        for window in make_windows(path, ids[name], 1.0, 0.5, keep_every=step):
+    for name in road.manifest.names("validation"):
+        for window in road.windows(name, keep_every=road.keep_every(name, 100)):
             total += 1
             result = defender.stage2.score(window)
             if result.score > normal_top:

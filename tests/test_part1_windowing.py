@@ -124,3 +124,48 @@ def test_make_windows_reads_a_road_log(tmp_path):
     wins = list(make_windows(str(log), "cap01"))
     assert [w.window_id for w in wins] == ["cap01_w0000", "cap01_w0001"]
     assert wins[0].window_start == 0.0
+
+
+# ---------- sampling, vehicle id, exact boundaries ---------------------
+def test_keep_every_returns_every_nth_window_with_its_own_index():
+    frames = [frame(i + 0.5) for i in range(10)]
+    kept = list(windows_from_frames(frames, "cap07", keep_every=3))
+    assert [w.window_id for w in kept] == ["cap07_w0000", "cap07_w0003", "cap07_w0006"]
+    assert all(len(w.frames) == 1 for w in kept)
+
+
+def test_keep_every_must_be_a_positive_whole_number():
+    with pytest.raises(ValueError, match="keep_every"):
+        list(windows_from_frames([frame(0.1)], "cap07", keep_every=0))
+
+
+def test_vehicle_id_is_carried_on_every_window():
+    wins = list(windows_from_frames([frame(0.1), frame(1.1), frame(2.1)], "cap07",
+                                    vehicle_id="veh01"))
+    assert {w.vehicle_id for w in wins} == {"veh01"}
+
+
+def test_boundary_is_exact_in_microseconds():
+    """0.999999 s belongs to window 0 and 1.000000 s to window 1, exactly."""
+    wins = list(windows_from_frames([frame(0.999999), frame(1.0), frame(2.5)], "cap07"))
+    assert [f.timestamp for f in wins[0].frames] == [0.999999]
+    assert [f.timestamp for f in wins[1].frames] == [1.0]
+
+
+def test_make_windows_cleans_duplicates(tmp_path):
+    from part1.cleaning import CleaningReport
+    line = "(1110000000.100000) can0 0F4#960C010204B10240"
+    log = tmp_path / "cap.log"
+    rows = [line, line] + [f"(1110000000.{100000 + i * 400:06d}) can0 0D0#00" for i in range(1, 2200)] \
+        + ["(1110000002.000000) can0 0D0#00"]
+    log.write_text("\n".join(rows) + "\n")
+    report = CleaningReport()
+    wins = list(make_windows(str(log), "cap01", report=report))
+    assert report.duplicates_dropped == 1
+    assert sum(1 for f in wins[0].frames if f.can_id == "0F4") == 1
+
+
+def test_keep_every_for_limits_windows():
+    from part1.windowing import keep_every_for
+    assert keep_every_for(20_000_000, 1.0, 10) == 2      # 20 windows, keep 10
+    assert keep_every_for(5_000_000, 1.0, 10) == 1
