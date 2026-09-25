@@ -3,7 +3,7 @@
 // and defender/README.md) -- the label says so explicitly rather than
 // implying a probability.
 
-export default function ScoreGauge({ output }) {
+export default function ScoreGauge({ output, wide = false }) {
   if (!output) return null;
   const { attack_score: score, threshold, decision } = output;
   const pct = Math.round(score * 1000) / 10;
@@ -12,9 +12,9 @@ export default function ScoreGauge({ output }) {
   const isAttack = decision === "ATTACK";
 
   return (
-    <section className="card score-gauge">
+    <section className={`card score-gauge ${wide ? "score-gauge-wide" : ""}`}>
       <div className="card-head">
-        <h2>Attack score</h2>
+        <h2 title="Score, not a calibrated probability">Attack score</h2>
         <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
           {isAttack ? "ATTACK" : "ACCEPT"}
         </span>
@@ -24,7 +24,6 @@ export default function ScoreGauge({ output }) {
         {score.toFixed(3)}
         <span className="score-figure-unit">/ 1.000</span>
       </div>
-      <p className="hint">Score, not a calibrated probability.</p>
 
       <div className="gauge-wrap">
         <div

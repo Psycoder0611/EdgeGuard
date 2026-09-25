@@ -39,6 +39,11 @@ export function useReplay(run, { intervalMs = 350 } = {}) {
     setIndex(0);
   }, []);
 
+  const seek = useCallback(
+    (i) => setIndex(Math.min(Math.max(Math.round(i), 0), Math.max(total - 1, 0))),
+    [total]
+  );
+
   const history = useMemo(() => run.slice(0, clampedIndex + 1), [run, clampedIndex]);
   const current = history[history.length - 1] ?? null;
 
@@ -53,5 +58,6 @@ export function useReplay(run, { intervalMs = 350 } = {}) {
     play,
     pause,
     reset,
+    seek,
   };
 }

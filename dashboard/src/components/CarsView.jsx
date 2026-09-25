@@ -31,7 +31,7 @@ export default function CarsView({ output, attackAction }) {
       <div className="card-head">
         <h2>Fleet view</h2>
         <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
-          {isAttack ? "RED TEAM ATTACK" : "Normal traffic"}
+          {isAttack ? "Red Team attack" : "Normal traffic"}
         </span>
       </div>
 
@@ -53,7 +53,7 @@ export default function CarsView({ output, attackAction }) {
             <path d="M -50 0 L 50 0" className="gate-bar" />
             <path d="M -50 0 L -50 110" className="gate-post" />
             <path d="M 50 0 L 50 110" className="gate-post" />
-            <circle cx="0" cy="0" r="9" className={isAttack ? "gate-light-critical" : "gate-light-good"} />
+            <circle cx="0" cy="0" r="9" className={isAttack ? "gate-light-critical" : "gate-light-defender"} />
           </g>
 
           {/* incoming Red Team vectors, attack only */}
