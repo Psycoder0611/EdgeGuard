@@ -3,11 +3,10 @@ import { parseEvidence } from "../utils/parseEvidence";
 
 const MAX_VISIBLE = 60;
 
-export default function AlertTimeline({ history }) {
+export default function AlertTimeline({ history, onSeek }) {
   const [hoverIdx, setHoverIdx] = useState(null);
   const visible = history.slice(-MAX_VISIBLE);
   const offset = history.length - visible.length;
-  const attackCount = history.filter((h) => h.decision === "ATTACK").length;
 
   return (
     <section className="card alert-timeline">
@@ -16,7 +15,7 @@ export default function AlertTimeline({ history }) {
         <span className="legend">
           <span className="legend-dot legend-dot-good" /> Accept
           <span className="legend-dot legend-dot-critical" /> Attack
-          <span className="hint">&nbsp;&middot; {attackCount} attack window{attackCount === 1 ? "" : "s"} so far</span>
+          <span className="hint">&nbsp;&middot; click a bar to jump</span>
         </span>
       </div>
 
@@ -27,7 +26,11 @@ export default function AlertTimeline({ history }) {
           return (
             <div
               key={output.window_id}
-              className={`timeline-mark ${isAttack ? "timeline-mark-critical" : "timeline-mark-good"}`}
+              className={`timeline-mark ${isAttack ? "timeline-mark-critical" : "timeline-mark-good"} ${globalIdx === history.length - 1 ? "timeline-mark-now" : ""}`}
+              onClick={() => onSeek?.(globalIdx)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onSeek?.(globalIdx); }}
+              role="button"
+              aria-label={`Jump to ${output.window_id}`}
               onMouseEnter={() => setHoverIdx(globalIdx)}
               onMouseLeave={() => setHoverIdx((cur) => (cur === globalIdx ? null : cur))}
               tabIndex={0}

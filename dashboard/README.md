@@ -106,3 +106,24 @@ only ever consume `DefenderOutput`-shaped objects.
   `defender/README.md`'s results table describes 0.5s stride ("windows
   overlap"). Not this dashboard's bug, but worth flagging to whoever owns
   those two files since it'll affect real replay speed/pacing once wired up.
+
+## Analyze your own capture (upload a .log)
+
+The **Analyze capture** button (top right) uploads a ROAD-format `.log`
+file (SocketCAN text) from this computer to a local server that scores it with
+the real Defender (`part1.windowing.make_windows` -> `defender.Defender`, v2),
+streaming each window back live. The file never leaves the machine and is
+deleted after scoring. Press **Replay in dashboard** to play it in every tab.
+The Metrics tab's **Edge device** card shows live CPU, memory, GPU (context
+only; the Defender is CPU-only), frames/s, latency and model size, refreshed
+every 3 s. EdgeGuard has no language model, so it counts CAN frames, not tokens.
+
+```bash
+# terminal 1, repo root
+source .venv/bin/activate
+pip install psutil            # optional, for exact CPU / memory
+python -m uvicorn integration.analyze_server:app --host 127.0.0.1 --port 8000
+
+# terminal 2
+cd dashboard && npm run dev   # Vite proxies /api to port 8000
+```

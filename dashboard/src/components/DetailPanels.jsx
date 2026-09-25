@@ -1,51 +1,78 @@
 import { parseEvidence } from "../utils/parseEvidence";
 import { ACTIONS } from "./actionMeta";
 
-export function CanIdPanel({ output }) {
+// Attacker side (Red Team): what is being hit right now and so far.
+export function AttackerPanel({ output, history }) {
   const { canId, stage } = parseEvidence(output?.evidence);
+  const isAttack = output?.decision === "ATTACK";
+  const attacks = history.filter((h) => h.decision === "ATTACK");
+
+  const counts = {};
+  for (const h of attacks) {
+    const id = parseEvidence(h.evidence).canId;
+    if (id) counts[id] = (counts[id] || 0) + 1;
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  const peak = attacks.reduce((m, h) => Math.max(m, h.attack_score), 0);
+
   return (
-    <section className="card can-id-panel">
+    <section className={`card side-card side-attacker ${isAttack ? "side-active" : ""}`}>
       <div className="card-head">
-        <h2>Affected CAN ID</h2>
+        <h2>Attacker <span className="side-tag">Red Team</span></h2>
+        {isAttack && <span className="status-badge status-critical">Active</span>}
       </div>
-      {canId ? (
-        <>
-          <div className="can-id-value mono">{canId}</div>
-          <p className="hint">Parsed from evidence{stage ? ` (${stage})` : ""}. Best-effort until the team standardizes the evidence format.</p>
-        </>
-      ) : (
-        <>
-          <div className="can-id-value mono can-id-unknown">&mdash;</div>
-          <p className="hint">Not stated in this window's evidence text.</p>
-        </>
-      )}
+
+      <span className="label">Affected CAN ID</span>
+      <div className={`can-id-value mono ${canId ? "" : "can-id-unknown"}`}>{canId ?? "-"}</div>
+      {stage && <span className="hint">from {stage} evidence</span>}
+
+      <div className="mini-stats">
+        <div>
+          <span className="label">Top target</span>
+          <span className="mono mini-val">{top ? `${top[0]} ×${top[1]}` : "-"}</span>
+        </div>
+        <div>
+          <span className="label">Peak score</span>
+          <span className="mono mini-val">{attacks.length ? peak.toFixed(3) : "-"}</span>
+        </div>
+      </div>
     </section>
   );
 }
 
-export function SimulatedResponsePanel({ output, attackAction, onAttackActionChange }) {
-  const action = !output
-    ? null
-    : output.decision === "ATTACK"
-    ? attackAction
-    : "SIMULATED_FORWARD";
+// Defender side (Blue Team): how the simulated consumer responds.
+export function DefenderPanel({ output, history, attackAction, onAttackActionChange }) {
+  const action = !output ? null : output.decision === "ATTACK" ? attackAction : "SIMULATED_FORWARD";
   const meta = action ? ACTIONS[action] : null;
+  const clean = history.filter((h) => h.decision === "ACCEPT").length;
+  const blocked = history.length - clean;
 
   return (
-    <section className="card response-panel">
+    <section className="card side-card side-defender">
       <div className="card-head">
-        <h2>Simulated response</h2>
+        <h2>Defender <span className="side-tag">Blue Team</span></h2>
       </div>
 
+      <span className="label">Response</span>
       {meta ? (
         <span className={`status-badge ${meta.tone}`}>{meta.label}</span>
       ) : (
-        <span className="hint">Waiting for first window&hellip;</span>
+        <span className="hint">Waiting for first window</span>
       )}
-      <p className="hint">Software simulation only &mdash; never touches real CAN frames or ROAD files.</p>
+
+      <div className="mini-stats">
+        <div>
+          <span className="label">Passed clean</span>
+          <span className="mono mini-val">{clean}</span>
+        </div>
+        <div>
+          <span className="label">Flagged</span>
+          <span className="mono mini-val">{blocked}</span>
+        </div>
+      </div>
 
       <div className="toggle-row">
-        <span className="label">On ATTACK, use:</span>
+        <span className="label">On attack</span>
         <div className="speed-group" role="group" aria-label="Attack action (team setting)">
           {["SIMULATED_ALERT", "SIMULATED_ISOLATION"].map((a) => (
             <button
@@ -63,58 +90,53 @@ export function SimulatedResponsePanel({ output, attackAction, onAttackActionCha
 }
 
 export function RoutingPanel({ output, escalated, quality }) {
-  const decided = Boolean(output);
   return (
     <section className="card routing-panel">
       <div className="card-head">
         <h2>Local / cloud routing</h2>
       </div>
       <div className="routing-row">
-        <span className="status-badge status-good">LOCAL &mdash; decision made on-device, always</span>
-        {decided && (
+        <span className="status-badge status-good">Local decision</span>
+        {output && (
           <span
-            className={`status-badge ${escalated ? "status-warning" : "status-disabled"}`}
+            className={`status-badge ${escalated ? "status-warning" : "status-confident"}`}
             title={
               escalated
-                ? "This window's score falls inside the calibrated uncertainty band around the threshold -- a real run would sanitize it (no raw CAN data) and send it for a cloud second opinion."
-                : "This window's score is outside the uncertainty band -- the local decision is trusted on its own; no cloud call."
+                ? "Score is inside the uncertainty band: a real run would send a sanitized bundle to the cloud for a second opinion."
+                : "Score is outside the uncertainty band: the local decision stands, no cloud call."
             }
           >
-            {escalated ? "IN ESCALATION BAND — would call cloud" : "CONFIDENT — no escalation"}
+            {escalated ? "Escalate to cloud" : "Confident, stays local"}
           </span>
         )}
       </div>
-      <p className="hint">
-        The local decision is never blocked on the cloud call (part1/escalation_policy.py,
-        sanitizer.py, mock_cloud_endpoint.py) &mdash; this badge shows whether THIS window
-        falls inside the real calibrated band, using the same rule as a live run.
-      </p>
+
       {quality && (
-        <div className="routing-quality">
-          <p className="hint">
-            Measured against known labels (Red Team test path, no cloud needed &mdash;{" "}
-            {quality.source}):
-          </p>
-          <ul className="routing-quality-list">
-            <li>
-              <strong>{(quality.escalationPrecision * 100).toFixed(1)}%</strong> of escalated
-              windows are real local mistakes (escalation precision)
-            </li>
-            <li>
-              <strong>{quality.escalatedFalsePositives}/{quality.localFalsePositives}</strong>{" "}
-              (100%) of false alarms get escalated for review
-            </li>
-            <li>
-              <strong>{quality.escalatedFalseNegatives}/{quality.localFalseNegatives}</strong> missed
-              attacks caught by escalation &mdash; confident misses stay invisible to it
-            </li>
-            <li>
-              <strong>{Math.round(quality.bundleBytesMean)} bytes</strong> sent per escalation,{" "}
-              <strong>0 raw CAN bytes</strong> (allow-list: {quality.bundleFields.join(", ")})
-            </li>
-          </ul>
-        </div>
+        <>
+          <div className="metric-chips metric-chips-wide">
+            <Chip value={`${(quality.escalationPrecision * 100).toFixed(1)}%`} label="escalation precision" />
+            <Chip value={`${quality.escalatedFalsePositives}/${quality.localFalsePositives}`} label="false alarms reviewed" />
+            <Chip value={`${quality.escalatedFalseNegatives}/${quality.localFalseNegatives}`} label="misses caught" />
+            <Chip value={`${Math.round(quality.bundleBytesMean)} B`} label="per escalation, 0 raw CAN" />
+          </div>
+          <details className="routing-details">
+            <summary>Details</summary>
+            <p className="hint">
+              The local decision never waits on the cloud. Numbers from {quality.source.split(" ")[0]}.
+              Fields sent: {quality.bundleFields.join(", ")}.
+            </p>
+          </details>
+        </>
       )}
     </section>
+  );
+}
+
+function Chip({ value, label }) {
+  return (
+    <div className="metric-chip">
+      <span className="mono metric-chip-val">{value}</span>
+      <span className="metric-chip-lab">{label}</span>
+    </div>
   );
 }
