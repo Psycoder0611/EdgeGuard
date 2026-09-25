@@ -1,5 +1,6 @@
 import { parseEvidence } from "../utils/parseEvidence";
 import { ACTIONS } from "./actionMeta";
+import { formatLatency } from "../utils/latency";
 
 // Attacker side (Red Team): what is being hit right now and so far.
 export function AttackerPanel({ output, history }) {
@@ -68,6 +69,10 @@ export function DefenderPanel({ output, history, attackAction, onAttackActionCha
         <div>
           <span className="label">Flagged</span>
           <span className="mono mini-val">{blocked}</span>
+        </div>
+        <div title="Inference time for this window, measured by the Defender (window collection excluded)">
+          <span className="label">Decided in</span>
+          <span className="mono mini-val">{formatLatency(output?.latency_ms) ?? "-"}</span>
         </div>
       </div>
 

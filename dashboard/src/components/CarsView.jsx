@@ -1,5 +1,6 @@
 import { parseEvidence } from "../utils/parseEvidence";
 import { useCarDrive } from "../utils/useCarDrive";
+import { formatLatency } from "../utils/latency";
 
 // Glowing wireframe car scene -- a 2D SVG outline drawing with a neon glow
 // filter, not a literal 3D wireframe render (that needs a 3D engine and
@@ -24,6 +25,7 @@ export default function CarsView({ output, attackAction }) {
   const { canId } = parseEvidence(output.evidence);
   const scorePct = Math.round(output.attack_score * 100);
   const thresholdPct = Math.round(output.threshold * 100);
+  const latency = formatLatency(output.latency_ms);
   const tilt = Math.max(Math.min(angle * 0.2, 12), -12); // subtle lean into curves, clamped
 
   return (
@@ -98,6 +100,7 @@ export default function CarsView({ output, attackAction }) {
 
       <div className="cars-footline hint">
         {output.window_id} &middot; {canId ? `CAN ${canId}` : "no CAN ID in evidence"} &middot; score {scorePct}% vs threshold {thresholdPct}%
+        {latency && ` · decided in ${latency}`}
         {isAttack && ` · responding with ${attackAction === "SIMULATED_ISOLATION" ? "isolation" : "alert"}`}
       </div>
     </section>

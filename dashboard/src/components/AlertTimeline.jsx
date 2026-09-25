@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { parseEvidence } from "../utils/parseEvidence";
+import { formatLatency } from "../utils/latency";
 
 const MAX_VISIBLE = 60;
 
@@ -50,6 +51,7 @@ export default function AlertTimeline({ history, onSeek }) {
 
 function TimelineTooltip({ output }) {
   const { stage, canId } = parseEvidence(output.evidence);
+  const latency = formatLatency(output.latency_ms);
   return (
     <div className="timeline-tooltip">
       <div className="mono">{output.window_id}</div>
@@ -59,6 +61,7 @@ function TimelineTooltip({ output }) {
         {output.decision}
         {stage && <> {" · "}{stage}</>}
         {canId && <> {" · "}CAN {canId}</>}
+        {latency && <> {" · "}decided in <span className="mono">{latency}</span></>}
       </div>
       <div className="hint">{output.evidence}</div>
     </div>

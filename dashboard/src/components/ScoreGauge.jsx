@@ -3,6 +3,8 @@
 // and defender/README.md) -- the label says so explicitly rather than
 // implying a probability.
 
+import { formatLatency } from "../utils/latency";
+
 export default function ScoreGauge({ output, wide = false }) {
   if (!output) return null;
   const { attack_score: score, threshold, decision } = output;
@@ -10,13 +12,21 @@ export default function ScoreGauge({ output, wide = false }) {
   const thresholdPct = Math.round(threshold * 1000) / 10;
   const thresholdLabelPct = Math.min(Math.max(thresholdPct, 9), 91); // keep the label on-card; the tick stays exact
   const isAttack = decision === "ATTACK";
+  const latency = formatLatency(output.latency_ms);
 
   return (
     <section className={`card score-gauge ${wide ? "score-gauge-wide" : ""}`}>
       <div className="card-head">
         <h2 title="Score, not a calibrated probability">Attack score</h2>
-        <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
-          {isAttack ? "ATTACK" : "ACCEPT"}
+        <span className="card-head-meta">
+          {latency && (
+            <span className="hint mono" title="Inference time for this window, measured by the Defender (window collection excluded)">
+              decided in {latency}
+            </span>
+          )}
+          <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
+            {isAttack ? "ATTACK" : "ACCEPT"}
+          </span>
         </span>
       </div>
 

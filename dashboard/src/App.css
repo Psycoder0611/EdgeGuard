@@ -8,8 +8,8 @@
   --surface-1: #1a1a19;
   --page-plane: #0d0d0d;
   --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --muted: #898781;
+  --text-secondary: #ffffff;
+  --muted: #ffffff;
   --gridline: #2c2c2a;
   --baseline: #383835;
   --border: rgba(255, 255, 255, 0.1);
@@ -25,6 +25,13 @@
   --defender: #3b82f6;
   --cyan: #22d3ee;
   --amber: #fbbf24;
+
+  /* Lighter variants for TEXT only (the base colors stay for borders, fills
+     and glows). The base tones sit near 4:1 on the tinted cards; these are
+     ~6.5-7:1. */
+  --good-text: #6dc86d;
+  --attacker-text: #ff8a94;
+  --defender-text: #7fb0ff;
 
   min-height: 100vh;
   background:
@@ -139,7 +146,7 @@
 }
 
 .pill-live {
-  color: var(--good);
+  color: var(--good-text);
   border-color: color-mix(in srgb, var(--good) 45%, transparent);
 }
 
@@ -148,7 +155,7 @@
 }
 
 .pill-mock {
-  color: var(--accent);
+  color: var(--defender-text);
   border-color: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 
@@ -172,7 +179,7 @@
 }
 
 .status-good {
-  color: var(--good);
+  color: var(--good-text);
   background: color-mix(in srgb, var(--good) 16%, transparent);
 }
 
@@ -275,6 +282,12 @@
   gap: 10px;
 }
 
+.card-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .card-head h2 {
   margin: 0;
   font-size: 14px;
@@ -347,7 +360,7 @@
 
 .btn-chip-active {
   border-color: var(--accent);
-  color: var(--accent);
+  color: var(--defender-text);
 }
 
 .toggle-row {
@@ -904,6 +917,9 @@
   color: var(--tone);
 }
 
+.kpi-red .kpi-label { color: var(--attacker-text); }
+.kpi-blue .kpi-label { color: var(--defender-text); }
+
 .kpi-value {
   font-size: 30px;
   font-weight: 700;
@@ -1036,8 +1052,8 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
-.tt-red { color: var(--attacker); font-weight: 700; }
-.tt-green { color: var(--good); font-weight: 700; }
+.tt-red { color: var(--attacker-text); font-weight: 700; }
+.tt-green { color: var(--good-text); font-weight: 700; }
 
 .legend-line {
   display: inline-block;
@@ -1072,7 +1088,7 @@
   background: linear-gradient(160deg, color-mix(in srgb, var(--attacker) 12%, var(--surface-1)), var(--surface-1) 55%);
 }
 
-.side-attacker h2 { color: var(--attacker); }
+.side-attacker h2 { color: var(--attacker-text); }
 .side-attacker .side-tag { background: color-mix(in srgb, var(--attacker) 22%, transparent); color: #ffb3b9; }
 
 .side-attacker.side-active {
@@ -1089,11 +1105,12 @@
   background: linear-gradient(160deg, color-mix(in srgb, var(--defender) 12%, var(--surface-1)), var(--surface-1) 55%);
 }
 
-.side-defender h2 { color: #7fb0ff; }
+.side-defender h2 { color: var(--defender-text); }
 .side-defender .side-tag { background: color-mix(in srgb, var(--defender) 25%, transparent); color: #bcd5ff; }
 
 .mini-stats {
   display: flex;
+  flex-wrap: wrap;
   gap: 28px;
   margin-top: 4px;
 }
