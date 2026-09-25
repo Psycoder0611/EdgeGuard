@@ -181,6 +181,77 @@ v2 from ACCEPT (score 0.96) to ATTACK (score 0.999, `out_of_range` evidence).
   or a margin that EXPANDS rather than trims the learned range) -- the feature is implemented and
   tested, but this specific use of it is a documented dead end, not a fix.
 
+### Hardening loop closed: v5, watch-list widened from real confirmed misses, 2026-09-24
+This closes the gap the architecture doc calls the "red-vs-blue hardening loop" ("Fleet window ->
+Red Team proposal -> constrained injector -> Blue Team score -> ground truth comparison ->
+confirmed misses -> candidate update -> held-out evaluation"): `part3.hardening_set.build_hardening_set()`
+existed and was tested, but nothing outside its own test file had ever called it on a real evasion
+log -- v2 was never actually hardened against Part 3's own confirmed misses. **v3 and v4 above were
+not that**; both are independent Stage 2 variants, not built from a `HardeningSet`.
+
+- **Step 1, real confirmed misses:** reran the Red Team test path (`integration.run_demo --mode test
+  --model-version v2`) on all 18 real development captures, reproducing the Integration section's
+  numbers exactly (2511 windows, recall 22.8% overall) and writing every miss to
+  `/tmp/evasions_v2.jsonl` (1293 confirmed false negatives; not committed -- it's a byte-for-byte
+  reproducible artifact of a one-line command, not a durable one).
+- **Step 2, `part3/hardening_report.py` (new)**: wires `build_hardening_set()` to a real evasion
+  log for the first time, and breaks the misses down by family and by whether Stage 2's watch-list
+  was covering the target CAN ID (`results/hardening_report_v2.json`):
+  - **910 / 1293 (70%) were a coverage gap**: the target CAN ID (`006`, `00E`, `033`, `0A7`, `125`,
+    `354`, `5E1`) was never on Stage 2's `{0D0, 6E0}` watch-list, so Stage 2 could not have flagged
+    them regardless of severity. **All 588 offset misses target `006` alone** -- `part3.red_team_agent`'s
+    `propose_offset()` always picks the most STABLE byte in the window, and `006` is apparently that
+    byte in nearly every development capture, which also makes it an easy `out_of_range` catch once
+    watched (a byte that never moves, pushed to an extreme).
+  - **383 / 1293 (30%) were a sensitivity gap**: all `freeze`, all already on the watched `0D0`/`6E0`
+    IDs, still missed -- `frozen_break` itself isn't catching them, independent of watch coverage.
+- **Step 3, candidate (`--harden-v5`)**: widened the watch-list to every CAN ID a real miss named,
+  **except `00E`** -- a single-split ambient check (`ambient_dyno_drive_extended_short`, the known
+  worst leave-one-out drive) found `00E` alone raises false alarms 29/90 -> 36/90 with no matching
+  recall benefit (checked one ID at a time; the other 6 additions were each neutral, and combined
+  they reproduce the 29/90 baseline exactly -- not the full nested LOCO, same caveat as the
+  `bound_percentile` check above). `DEVELOPMENT_HARDENED_WATCH_IDS` in `defender/run_training.py`
+  records this list; `models/*_v5.json` are the real trained files.
+- **Result, real Red Team test on development data (never final_test)**:
+
+  | | v2 (baseline) | v5 (candidate) |
+  |---|---|---|
+  | Recall overall | 22.8% | **58.1%** |
+  | Recall, freeze | 15.8% | 16.1% (unchanged) |
+  | Recall, offset | 29.7% | **100%** |
+  | False alarms (paired controls) | 29.7% | 29.9% (unchanged) |
+
+  **Offset is effectively solved** by watch-list coverage alone, at no false-alarm cost. **Freeze is
+  not** -- `results/hardening_report_v5.json` shows the same 383-ish freeze misses persist even
+  though every one of their targets is now watched (only 22 residual misses, all on the deliberately
+  excluded `00E`), confirming this is a `frozen_break` sensitivity problem, not a coverage problem,
+  and matching the "rate" mode finding above: neither frozen-check variant nor watch-list coverage
+  fixes freeze detection. That needs its own investigation (how a freeze this short registers within
+  a 1 s window), separate from this fix.
+- **v5 FAILS the evidence gate -- do not ship it.** Run 2026-09-24 with explicit sign-off
+  (`results/final_evaluation_v2_vs_v5.json`, Block 5 below): on the real `final_test` attacks
+  (`correlated_signal`, `max_speedometer`, `reverse_light_on/off`, `max_engine_coolant_temp`,
+  `fuzzing` -- none of which target the CAN IDs `--harden-v5` added), **recall is byte-identical to
+  v2** (tp 168, fn 91, every family's recall unchanged to the digit) -- the widened watch-list never
+  once caught a real attack v2 didn't already catch -- **while false alarms roughly triple** (446 ->
+  1390 windows, 9.07% -> 28.3% of final_test, worse than the already-flagged v2 problem) and mean
+  inference time nearly triples (2.2 ms -> 6.4 ms). The single-split `extended_short` ambient check
+  above was not enough to catch this: final_test's 14 captures include 2 highway drives never seen
+  in training (Known problems and limits #4) and the real coolant/reverse-light attack captures,
+  and evidently at least one of the newly-watched IDs (`033`, `0A7`, `125`, `354`, or `5E1`) is far
+  noisier across that population than it was on the one drive checked.
+  **Lesson: a watch-list built from Part 3's own synthetic Red Team attack choices does not
+  transfer to the real ROAD final_test attacks** -- `propose_offset`'s "attack the most stable byte"
+  heuristic and the real attackers' actual targets are different distributions, so a candidate that
+  looks like a clean win against Red Team (see the recall table above) can still be a real
+  regression on genuinely held-out driving data. Before trying watch-list widening again: validate
+  with the FULL nested ambient LOCO (`defender/crossval.py ambient`, all 9 train+validation
+  captures, not one held-out drive) as a minimum bar, not a single-split spot check.
+- v1-vs-v2 and v2-vs-v5 are both spent now; a v6 attempt needs a real fix (freeze sensitivity, or a
+  more conservative field selection for offset) and its own justified use of `--force`.
+- Calibrated tests: `tests/test_hardening_report.py` (9 tests) and 3 new tests in
+  `tests/test_defender_run_training.py` for `--harden-v5`; 512 tests passing repo-wide.
+
 ### Final evaluation (`integration/run_final_evaluation.py`): Block 5, RUN on 2026-09-24 -- `results/final_evaluation.json`
 - The one-time, held-out v1-vs-v2 comparison on `final_test` (build plan S9). `run_final_evaluation()`
   is the only place in the codebase that constructs `RoadData(..., final_evaluation=True)`; it uses
@@ -221,6 +292,26 @@ Recall by family:
 - **reverse_light_off stays at 0 % for v2**, consistent with the development-set miss noted above (the
   reverse-light bit-flip needs decoded-signal checking that Stage 2 doesn't have yet).
 - Calibrated tests: `tests/test_run_final_evaluation.py` (7 tests, fake data only, all passing).
+
+### Second evidence-gate run: v2 vs v5, RUN on 2026-09-24 -- `results/final_evaluation_v2_vs_v5.json`
+- `v5` is the hardening-loop candidate above (Stage 2 watch-list widened from Part 3's real confirmed
+  misses). Run with explicit sign-off, same 14 final_test captures, 5178 windows.
+
+| | v2 (baseline) | v5 (updated) |
+|---|---|---|
+| Recall | 64.9 % (168 / 259) | 64.9 % (168 / 259) -- **identical** |
+| False alarms | 446 / 4919 = 9.07 % | **1390 / 4919 = 28.3 %** |
+| Precision | 27.4 % | 10.8 % |
+| F1 | 38.5 % | 18.5 % |
+| Mean inference | 2.21 ms | 6.39 ms |
+
+- **v5 fails the evidence gate.** Every family's recall is unchanged to the digit (the widened
+  watch-list never caught a real final_test attack v2 didn't already catch -- none of the real
+  attacks target the CAN IDs it added), while false alarms roughly triple. See the Hardening loop
+  section above for the full analysis and the lesson (a watch-list tuned to Part 3's own synthetic
+  Red Team attack choices does not transfer to real ROAD attacks). **v2 remains the model to ship.**
+  `v5`'s model files stay in `models/` as a documented, real, negative result -- not a candidate for
+  the demo.
 
 ## Results (frozen manifest, Part 1 windows and labels)
 
@@ -299,13 +390,24 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
    - Out-of-range and flatline checks per decoded signal of the watch-list IDs, using `preprocess(window, Decoder)` at training and scoring time.
    - Percentile bounds instead of min/max, chosen by cross-validation (the other project found min/max bounds too loose).
    - Measure with `crossval attacks` and `crossval ambient`; keep only if recall rises without more false alarms.
-6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90. Percentile out-of-range bounds were tried and built (`bound_percentile`, see the Stage 2 hardening section above) but do NOT help -- the cause is a coverage gap (0D0 byte7's true range exceeds what 8 drives showed), not an outlier, so trimming the bound only hurts. Try wider training regime coverage (a manifest change, team decision) or excluding counter/checksum-like fields from out_of_range instead.
+6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90. Percentile out-of-range bounds were tried and built (`bound_percentile`, see the Stage 2 hardening section above) but do NOT help -- the cause is a coverage gap (0D0 byte7's true range exceeds what 8 drives showed), not an outlier, so trimming the bound only hurts. Try wider training regime coverage (a manifest change, team decision) or excluding counter/checksum-like fields from out_of_range instead. (This is a different false-alarm problem from item 13's watch-list widening -- that one didn't move `extended_short` either way.)
 7. **Report the plan's metrics:** false alarms per hour (already in the cross-validation reports), detection delay per attack (time to first alert after the interval starts), recall for fully vs partly covered windows (`interval_overlap_s`).
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
 9. **Done, 2026-09-24:** the one-time final_test v1-vs-v2 comparison has been run (see the Final evaluation section above, `results/final_evaluation.json`). Headline: v2 recall 64.9% vs v1 0.39%, but v2's false-alarm rate on final_test is 9.07% (well above the 1% target) and it still misses max_engine_coolant_temp (the one unseen-target attack) and reverse_light_off entirely. Worth digging into before presenting this as a clean win.
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
 11. **Done:** Block 3 (`part3/`, freeze + offset) and Block 4 integration (`integration/run_demo.py`, one command runs both the ordinary and test paths). See the Part 3 / Integration sections above for real-data numbers, including the unexplained 29.7% false-alarm rate on generic (non-watch-list-targeted) Red Team attacks, which is worth digging into before the demo.
 12. **Done, 2026-09-24:** dashboard connected to real v2 Defender output (see the Dashboard section above); also fixed a `.gitignore` bug that had kept the dashboard's own data-handling source files out of git entirely. **Still open:** the second-opinion escalation service (build plan section 7) -- still a stub.
+13. **Done, 2026-09-24:** closed the red-vs-blue hardening loop end to end (see the Hardening loop
+    and second evidence-gate sections above): `build_hardening_set()` is now actually called on a real
+    evasion log (`part3/hardening_report.py`), a real candidate (`v5`) was built from it, and it was
+    run through the evidence gate. Result: **v5 fails** -- identical real-attack recall to v2, but
+    false alarms roughly triple on final_test (9.07% -> 28.3%). It looked like a clean, validated win
+    against Part 3's own synthetic Red Team attacks (offset recall 29.7% -> 100%, no cost) but that
+    does not transfer to the real ROAD final_test attacks, which target different CAN IDs entirely.
+    **v2 remains the model to ship. Do not adopt v5.** Still open: freeze-family detection (stuck at
+    ~16% in every attempt so far -- a `frozen_break` sensitivity problem) and validating any future
+    watch-list change against the full nested ambient LOCO, not a single-split spot check, before
+    spending `final_test` on it a third time.
 
 ## Rules for any code touching data
 

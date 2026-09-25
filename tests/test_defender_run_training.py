@@ -134,3 +134,31 @@ def test_harden_v3_and_v4_are_mutually_exclusive(fake_road):
 def test_v2_bound_percentile_defaults_to_none(fake_road):
     run(fake_road)
     assert info(fake_road, "v2")["stage2_bound_percentile"] is None
+
+
+def test_harden_v5_leaves_v1_and_v2_untouched(fake_road):
+    run(fake_road)
+    models = fake_road.data_dir.parent / "models"
+    before = {p.name: p.read_text(encoding="utf-8") for p in models.glob("*_v[12].json")}
+    assert run(fake_road, "--harden-v5", "--stage2-watch", "0D0") == 0
+    after = {p.name: p.read_text(encoding="utf-8") for p in models.glob("*_v[12].json")}
+    assert before == after
+    record = info(fake_road, "v5")
+    assert record["stage2_frozen_mode"] == "width" and record["base_stage1_version"] == "v1"
+    assert record["stage2_bound_percentile"] is None
+    assert record["stage2_watch_ids"] == ["0D0"]
+
+
+def test_harden_v5_requires_a_different_watch_list(fake_road):
+    run(fake_road)
+    with pytest.raises(SystemExit):
+        run(fake_road, "--harden-v5")  # default --stage2-watch is 0D0,6E0: no-op
+
+
+def test_harden_v3_v4_v5_are_mutually_exclusive(fake_road):
+    run(fake_road)
+    with pytest.raises(SystemExit):
+        run(fake_road, "--harden-v3", "--harden-v5", "--stage2-watch", "0D0")
+    with pytest.raises(SystemExit):
+        run(fake_road, "--harden-v4", "--harden-v5", "--bound-percentile", "10",
+           "--stage2-watch", "0D0")

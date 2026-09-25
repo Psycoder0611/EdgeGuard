@@ -28,6 +28,18 @@ out-of-range bounds instead of strict min/max, "width" frozen check
 otherwise unchanged from v2), isolating bound_percentile as the one
 difference from v2. Requires --bound-percentile.
 
+--harden-v5 trains ONLY v5 (v1's Stage 1 + Stage 2, otherwise identical to
+v2, with a wider --stage2-watch), closing the red-vs-blue hardening loop:
+a real Red Team run against v2 on all real development captures
+(integration.run_demo --mode test) logged 1293 confirmed misses
+(part3.evasion_log); part3.hardening_set.build_hardening_set() turned
+those into a real HardeningSet, and the 9 distinct target CAN IDs those
+misses named -- almost all outside v2's {0D0, 6E0} watch-list -- are
+DEVELOPMENT_HARDENED_WATCH_IDS below (00E excluded: it alone raised
+ambient false alarms on ambient_dyno_drive_extended_short in a
+single-split check, with no matching recall benefit). Requires
+--stage2-watch to differ from DEVELOPMENT_WATCH_IDS.
+
 The false-alarm rate has NO default: it is a team decision.
 """
 
@@ -42,6 +54,14 @@ from part1.split_manifest import MANIFEST_PATH, load_manifest
 # Chosen from development only, never final_test. 4E7 (coolant, final_test
 # only) is deliberately NOT included: an honest test of an unwatched ID.
 DEVELOPMENT_WATCH_IDS = ["0D0", "6E0"]
+
+# Candidate watch-list for --harden-v5: DEVELOPMENT_WATCH_IDS plus every CAN
+# ID a real, confirmed development miss (part3 Red Team freeze/offset attacks
+# against v2, /tmp/evasions_v2.jsonl -> part3.hardening_set.build_hardening_set)
+# actually targeted, EXCEPT 00E (raised ambient false alarms in a
+# single-split check -- see the module docstring). Still development-only
+# and still excludes 4E7 (coolant, final_test only).
+DEVELOPMENT_HARDENED_WATCH_IDS = ["006", "033", "0A7", "0D0", "125", "354", "5E1", "6E0"]
 
 
 def load_windows(road, names, max_windows, log=print):
@@ -73,6 +93,11 @@ def main(argv=None) -> int:
     parser.add_argument("--harden-v4", action="store_true",
                         help="train only v4 (percentile out-of-range bounds); v1 must "
                              "already exist; requires --bound-percentile")
+    parser.add_argument("--harden-v5", action="store_true",
+                        help="train only v5 (wider Stage 2 watch-list, from confirmed "
+                             "development misses); v1 must already exist; requires "
+                             "--stage2-watch to differ from DEVELOPMENT_WATCH_IDS "
+                             "(see DEVELOPMENT_HARDENED_WATCH_IDS above)")
     parser.add_argument("--bound-percentile", type=float, default=None,
                         help="Stage 2 out-of-range bounds as a percentile, e.g. 1.0 to "
                              "trim the extreme 1%% off each side (default: strict min/max, "
@@ -85,8 +110,12 @@ def main(argv=None) -> int:
         parser.error("--max-windows-per-capture must be at least 1")
     if args.harden_v4 and args.bound_percentile is None:
         parser.error("--harden-v4 requires --bound-percentile")
-    if args.harden_v3 and args.harden_v4:
-        parser.error("pass only one of --harden-v3 / --harden-v4")
+    if sum([args.harden_v3, args.harden_v4, args.harden_v5]) > 1:
+        parser.error("pass only one of --harden-v3 / --harden-v4 / --harden-v5")
+    if args.harden_v5 and args.stage2_watch.strip() == ",".join(DEVELOPMENT_WATCH_IDS):
+        parser.error("--harden-v5 requires --stage2-watch to differ from "
+                     "DEVELOPMENT_WATCH_IDS, e.g. "
+                     '"' + ",".join(["006", "033", "0A7", "0D0", "125", "354", "5E1", "6E0"]) + '"')
 
     watch = None if args.stage2_watch.strip().lower() == "all" else \
         [i for i in args.stage2_watch.split(",") if i.strip()]
@@ -121,6 +150,13 @@ def main(argv=None) -> int:
                       stage2_range_captures=full_train_frames, stage2_watch_ids=watch,
                       stage2_bound_percentile=args.bound_percentile)
         reports = (v4,)
+    elif args.harden_v5:
+        print(f"Training v5 (v1 Stage 1 + Stage 2, watch-list widened to {watch}; "
+              "this can take several minutes)...")
+        v5 = train_v2(args.model_dir, "v1", train, validation, "v5", args.model_dir,
+                      args.window_s, stride_s, overwrite=args.overwrite,
+                      stage2_range_captures=full_train_frames, stage2_watch_ids=watch)
+        reports = (v5,)
     else:
         print("Training v1 (Stage 1)...")
         v1 = train_defender(train, validation, args.max_false_alarm_rate, "v1", args.model_dir,
