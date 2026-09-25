@@ -401,6 +401,69 @@ same 11 captures), so this is a fair but small-n comparison. README's "Real resu
 this table; `results/final_evaluation.json`'s `baseline_detection_delay` / `updated_detection_delay`
 have the full numbers.
 
+### Per-capture false-alarm breakdown added, real re-run, 2026-09-25 (`part3/per_capture_metrics.py`)
+
+Closes item 8 from the review list (analyze highway/generalization separately) and directly
+answers `part3/metrics.py`'s own docstring TODO ("Overlapping windows are correlated; report
+capture-level results separately"). Measurement only -- groups the exact same `evaluate_batch()`
+results already computed for the blended final_test report by `capture_id`, via the same
+`window_id -> capture_id` map used for detection delay (`_WindowTiming`, never the full
+`TrafficWindow`, same memory reason as above). No model change, no new scoring pass.
+
+Real result, v2's 446 final_test false alarms broken out by the 3 normal captures:
+
+| capture | windows | false alarms | rate |
+|---|---|---|---|
+| ambient_highway_street_driving_long (cap12) | 3,764 | 433 | 11.5% |
+| ambient_highway_street_driving_diagnostics (cap11) | 469 | 9 | 1.9% |
+| ambient_dyno_drive_basic_short (cap02) | 444 | 4 | 0.9% |
+
+433/446 (97.1%) of every v2 false alarm on final_test comes from one capture; both highway
+captures together are 442/446 (99.1%). This replaces a bug in our own earlier write-up: the
+README and item 15 below had compared final_test's blended rate against
+`results/crossval_attacks.json`'s "15.19/hour" figure, which is `normal_windows_in_attack_captures`
+-- just 1 alarm over ~4 minutes of normal driving embedded in attack captures, far too small a
+sample to be a baseline. The correct, robust comparison is `results/crossval_ambient.json`'s proper
+9-capture leave-one-out estimate: 30 alarms / 763 windows = 141.5/hour, which the per-capture
+breakdown is consistent with once highway driving (present in final_test, absent from
+train/development entirely) is accounted for. Calibrated tests: `tests/test_part3_per_capture_metrics.py`
+(5 tests, all passing); 553 tests passing repo-wide.
+
+### Freeze-sensitivity root cause investigated, 2026-09-25 (read-only diagnostic, no code change)
+
+Closes item 6 from the review list. Freeze-family recall has been stuck around 16% since the
+hardening work (`sensitivity_gap_by_family: {"freeze": 383}` in `results/hardening_report_v2.json`
+-- all 383 sensitivity-gap misses, as opposed to coverage-gap misses on unwatched IDs, are freeze).
+Investigated with two live diagnostic scripts against the real trained v2 model (not saved to a
+file -- read-only investigation):
+
+1. Built real freeze attacks with `part3.red_team_agent.propose()` + `part3.attack_injector.inject()`
+   against real development windows on the watched IDs (`0D0`, `6E0`), scored with the real v2
+   `Defender`, and printed `stage2._raw_values()`. The `frozen_break` check fires at its maximum
+   possible raw value (65409.0, field `0D0`'s `pair6_be` full training-range width) on every single
+   attempt -- the check itself works. But the final fused decision stayed ACCEPT: `attack_score=0.6134`
+   against `threshold=0.9988`.
+2. Loaded `Defender.load("models", "v2").stage2.reference["frozen_break"]` directly (581 training
+   windows) and counted values: 43520.0 appears 270 times, **65409.0 appears 224 times** (38.6% of
+   all normal training windows), 129.0 appears 47 times, 65330.0 appears 30 times. `bisect_left(ref,
+   65409.0) = 357`, so `score = 357/582 = 0.6134` -- exactly matching the live attack's score.
+
+**Root cause confirmed:** `_unusualness()` (`defender/stage1.py`) scores `frozen_break` as a
+percentile rank against every normal training window's raw value, and `frozen_break`'s raw value in
+`frozen_mode="width"` (the default) is a *fixed per-field constant* -- the field's total training
+range width -- not a measure of how extreme this specific freeze event is. Because `0D0`'s watched
+field legitimately freezes at that exact width value in 224 of 581 (38.6%) real normal training
+windows (this vehicle's dyno-based driving genuinely holds this signal still a lot), a synthetic
+freeze attack that produces the identical value only ranks at the 61st percentile of "normal" --
+nowhere near the ~99.88th-percentile threshold -- even though the raw check fires perfectly every
+time. This is a genuine sensitivity limit of percentile-rank scoring for this dataset's driving
+conditions, not a code bug, and not something a threshold change alone can fix (the check output
+itself doesn't distinguish a real freeze attack from this vehicle's normal held-still readings).
+A real fix would need a different raw signal for `frozen_break` (e.g. how long the current value has
+already been held, rather than which value it is) -- out of scope this close to the deadline; see
+"Known problems and limits" and README's "What EdgeGuard does not yet catch" for the disclosed
+write-up.
+
 ### Final evaluation (`integration/run_final_evaluation.py`): Block 5, RUN on 2026-09-24 -- `results/final_evaluation.json`
 - The one-time, held-out v1-vs-v2 comparison on `final_test` (build plan S9). `run_final_evaluation()`
   is the only place in the codebase that constructs `RoadData(..., final_evaluation=True)`; it uses
@@ -525,6 +588,7 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 4. **The frozen-`0D0` repro is weaker.** Its drive (`ambient_dyno_reverse`) is now in train, so the repro window may be in-sample.
 5. **The final test mostly repeats known attacks.** The watch-list (`0D0`, `6E0`) comes from development attacks that target the same IDs as the final-test `_3` attacks. Only coolant (`4E7`) tests an unseen target. Report the two separately.
 6. **Short attacks with 1 s windows.** The shortest attack (fuzzing_3, 0.65 s) often falls across a window boundary. Use `interval_overlap_s` to report partly covered windows separately.
+7. **Freeze-family recall caps around 16%, root cause confirmed 2026-09-25.** `frozen_break`'s raw score is a fixed per-field constant (the field's full training-range width), scored by percentile rank; watched field `0D0` legitimately hits that exact value in 224/581 (38.6%) of normal training windows, so any freeze attack producing the same value only reaches the 61st percentile against a ~99.9th-percentile threshold. See the dedicated section above. Not fixable by a threshold change; needs a different raw signal (e.g. how-long-held, not which-value) -- out of scope now.
 
 ## What to do next (in order)
 
@@ -556,9 +620,11 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
     false alarms roughly triple on final_test (9.07% -> 28.3%). It looked like a clean, validated win
     against Part 3's own synthetic Red Team attacks (offset recall 29.7% -> 100%, no cost) but that
     does not transfer to the real ROAD final_test attacks, which target different CAN IDs entirely.
-    **v2 remains the model to ship. Do not adopt v5.** Still open: freeze-family detection (stuck at
-    ~16% in every attempt so far -- a `frozen_break` sensitivity problem) and validating any future
-    watch-list change against the full nested ambient LOCO, not a single-split spot check, before
+    **v2 remains the model to ship. Do not adopt v5.** Freeze-family detection (stuck at ~16% in every
+    attempt so far) has its root cause confirmed 2026-09-25 -- see "Freeze-sensitivity root cause
+    investigated" above and "Known problems and limits" #7 -- but fixing it needs a new raw signal
+    for `frozen_break`, not attempted this close to the deadline. Any future watch-list change still
+    needs validating against the full nested ambient LOCO, not a single-split spot check, before
     spending `final_test` on it a third time.
 14. **Done, 2026-09-25:** wired the cloud-escalation path end to end (see the Cloud-escalation
     section above) -- `integration/run_demo.py --escalate --max-escalation-rate <rate>` now actually
@@ -573,16 +639,17 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
     simulated cloud's fixed stand-in threshold (0.6) is badly mismatched to v2's real threshold
     (0.9988), so the real-data correction-rate number (97.9%) is not yet meaningful -- recalibrate
     the stand-in relative to each model's own threshold before quoting that number in the demo.
-15. **Done, 2026-09-25:** README got a "Metrics -- how and why they were chosen" section
-    (the brief asks for this by name). One derived number in it, worth recording here for
-    reproducibility: final_test false alarms per hour. `results/final_evaluation.json`'s v2
-    `updated` block has tn=4473, fp=446 normal windows, window_s=1.0 (part1/windowing.py: stride
-    == window, no overlap), so normal_hours = 4919/3600 = 1.3664h, fp/hour = 446/1.3664 = 326.4.
-    Same arithmetic on `baseline` (v1): 14.6/hour. Compared against `results/crossval_attacks.json`'s
-    cross-validated normal_windows_in_attack_captures (v2: 15.19/hour), the final_test rate is far
-    higher -- final_test's two highway drives are a driving regime the training/development data
-    (9 drives, no highway) never covered. This is the same coverage-gap story as the hardening
-    section, now visible in the false-alarm number too.
+15. **Done, 2026-09-25, later corrected the same day:** README got a "Metrics -- how and why
+    they were chosen" section (the brief asks for this by name). It originally compared final_test's
+    326.4/hour false-alarm rate (`results/final_evaluation.json`'s v2 `updated`: fp=446, normal_hours
+    = 4919/3600 = 1.3664h) against `results/crossval_attacks.json`'s "15.19/hour" --
+    **that comparison used the wrong denominator: `normal_windows_in_attack_captures` is just 1 alarm
+    over ~4 minutes of normal driving embedded in attack captures, far too small a sample to be a
+    baseline.** Caught during the item 1-8 review pass (2026-09-25). Corrected: the robust comparison
+    is `results/crossval_ambient.json`'s proper 9-capture leave-one-out estimate (30 alarms / 763
+    windows = 141.5/hour), and the per-capture breakdown (see the dedicated section above) is now the
+    headline evidence instead of any per-hour comparison -- 433/446 (97.1%) of v2's false alarms come
+    from one highway capture, precisely because train/development have zero highway driving.
 16. **Done, 2026-09-25:** escalation measured properly (see the Escalation quality section above):
     precision 48.1%, recall 28.0% (100% of false alarms, 14% of misses) on v2's Red Team test path,
     ~240 bytes and 0 raw CAN bytes per escalation. The stand-in cloud's 97.9% is now explicitly

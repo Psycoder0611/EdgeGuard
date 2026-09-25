@@ -40,6 +40,7 @@ from part3.detection_delay import DetectionDelayReport, Scored, compute_detectio
 from part3.evaluator import evaluate_batch
 from part3.evidence_gate import EvidenceReport, compare_final_models
 from part3.metrics import MetricsReport, compute_metrics
+from part3.per_capture_metrics import compute_per_capture_metrics
 from shared.schemas import DefenderOutput, GroundTruthLabel
 
 
@@ -57,6 +58,12 @@ class FinalEvaluationReport(BaseModel):
     updated_recall_by_family: Dict[str, Optional[float]]
     baseline_detection_delay: Optional[Dict[str, Optional[float]]] = None
     updated_detection_delay: Optional[Dict[str, Optional[float]]] = None
+    # capture_id -> metrics dict. Answers "which captures actually produce
+    # the false alarms/misses" -- an aggregate rate alone can't (see
+    # part3/metrics.py's own docstring: "report capture-level results
+    # separately").
+    baseline_per_capture: Optional[Dict[str, Dict[str, Optional[float]]]] = None
+    updated_per_capture: Optional[Dict[str, Dict[str, Optional[float]]]] = None
 
 
 def _metrics_dict(report: MetricsReport) -> Dict[str, Optional[float]]:
@@ -166,6 +173,16 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
     except ValueError:
         pass
 
+    window_id_to_capture_id = {wid: wt.capture_id for wid, wt in zip(window_ids, window_timings)}
+    baseline_per_capture = {
+        c.capture_id: _metrics_dict(c.metrics)
+        for c in compute_per_capture_metrics(baseline_outputs, labels, window_id_to_capture_id)
+    }
+    updated_per_capture = {
+        c.capture_id: _metrics_dict(c.metrics)
+        for c in compute_per_capture_metrics(updated_outputs, labels, window_id_to_capture_id)
+    }
+
     return FinalEvaluationReport(
         data_dir=str(data_dir),
         final_test_captures=names,
@@ -178,6 +195,8 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
         updated_recall_by_family=_recall_by_family(updated_outputs, labels),
         baseline_detection_delay=baseline_delay,
         updated_detection_delay=updated_delay,
+        baseline_per_capture=baseline_per_capture,
+        updated_per_capture=updated_per_capture,
     )
 
 
@@ -225,6 +244,10 @@ def main(argv=None) -> int:
     print(f"  recall by family: {report.updated_recall_by_family}")
     if report.updated_detection_delay:
         print(f"  detection delay: {report.updated_detection_delay}")
+    if report.updated_per_capture:
+        print("\nPer-capture (updated model):")
+        for capture_id, m in report.updated_per_capture.items():
+            print(f"  {capture_id}: tp={m['tp']} fp={m['fp']} tn={m['tn']} fn={m['fn']}")
     print(f"\nSaved to: {output_path}")
     return 0
 

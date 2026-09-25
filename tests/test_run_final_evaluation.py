@@ -92,6 +92,14 @@ def test_reports_the_real_v1_vs_v2_gap_on_final_test(fake_road):
     assert report.updated_detection_delay["mean_delay_s"] == pytest.approx(1.0)
     assert report.updated_detection_delay["max_delay_s"] == pytest.approx(1.0)
 
+    # Per-capture: ambient_f (cap06) has no attack windows at all, so its
+    # row must show zero tp/fp/fn on both models -- this is the row that
+    # answers "which capture actually produces the false alarms."
+    assert set(report.updated_per_capture) == {"cap06", "cap12", "cap13"}
+    assert report.updated_per_capture["cap06"]["fp"] == 0
+    assert report.updated_per_capture["cap06"]["tn"] > 0
+    assert report.updated_per_capture["cap12"]["tp"] + report.updated_per_capture["cap13"]["tp"] == 8
+
 
 def test_detection_delay_is_none_when_final_test_has_no_interval_capture(fake_road, tmp_path):
     """A final_test made only of ambient captures has nothing to measure a

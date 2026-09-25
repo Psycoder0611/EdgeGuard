@@ -25,13 +25,20 @@ Two modes, both scoring the same real-time signal from CAN traffic (see `CLAUDE.
 - **Adversarial testing and hardening** — a Red Team proposes synthetic attacks against real driving captures, a constrained injector applies them, the Defender scores both, and confirmed misses feed a hardening loop that produces (and evaluates) candidate model updates against real, held-out data.
 
 ```
-Fleet replay -> preprocess -> Defender (Stage 1 + Stage 2) -> local decision
-                                    |
-                         uncertain? (escalation_policy)
-                                    v
-                  sanitize -> simulated cloud second opinion
-                       (never blocks the local decision)
+[in-car ECU]  Fleet replay -> preprocess -> Defender (Stage 1+2) -> local decision
+                                                  |
+                                       uncertain? (escalation_policy)
+                                                  v
+[in-car ECU]               sanitize -> [cloud, off-vehicle]  second opinion
+                                 (never blocks the local decision)
 ```
+
+Everything in that diagram except the bracketed cloud step runs, in production, on the
+vehicle's own gateway computer. For this hackathon demo the whole real-time path (fleet
+replay, Defender, escalation) is simulated on the ZGX Nano instead of real car hardware --
+and the Nano *separately* also plays the OEM's on-prem security centre for training, Red
+Team testing and hardening (next section). Two different roles on the same physical box;
+neither one is an in-car deployment.
 
 ### Where the ZGX Nano sits
 
@@ -52,6 +59,20 @@ Components:
 | `integration/` | `run_demo.py` (one command, both modes) and `run_final_evaluation.py` (the one-time held-out evidence gate) |
 | `dashboard/` | Live view of real Defender output (React + Vite) |
 
+## Data splits
+
+Five disjoint sets of real ROAD captures, by `capture_id` (`part1/split_manifest.json`):
+
+| Split | Captures | Used for |
+|---|---|---|
+| `train` | 7 | Fit Stage 1 + Stage 2 reference distributions and normal ranges |
+| `validation` | 2 | Choose the alert threshold and the escalation-band width |
+| `development` | 18 | Leave-one-out cross-validation, Red Team attack testing, the hardening loop |
+| `final_test` | 14 | One-time held-out evidence gate -- frozen, touched exactly twice so far (v1-vs-v2, then v2-vs-v5) |
+| `separate` | 4 | Accelerator (Nano) benchmark captures only; not used in any accuracy number |
+
+**Still an open team decision, disclosed rather than hidden:** the build plan itself is ambiguous about whether the threshold should be tuned on `validation` or `development` data (one section names each). We read it as threshold-from-`validation`, attacks-and-misses-from-`development`, and that is what the code does -- but the team has not formally signed off on that reading. See `CLAUDE.md`'s "Decisions the team must confirm" section.
+
 ## Metrics — how and why they were chosen
 
 The brief asks for benchmarks "including how and why they were chosen." This is that answer; the numbers themselves are in the sections below and in `CLAUDE.md`.
@@ -59,7 +80,7 @@ The brief asks for benchmarks "including how and why they were chosen." This is 
 | Metric | How we measure it | Why this metric |
 |---|---|---|
 | Recall, per attack family | Attacks detected ÷ attacks injected, per family, on the frozen `final_test` set (real ROAD attacks, touched once) and cross-validated on development attacks | One overall accuracy number hides which attack types are and aren't caught — `max_engine_coolant_temp` and `reverse_light_off` sit at 0% while others are near 100% |
-| False alarms per hour | HIGH-severity decisions on normal driving ÷ hours of normal driving. Reported two ways: a cross-validated procedure estimate (used to choose settings) and the frozen model's rate on `final_test` (used to report the result) — never one instead of the other | An IDS that cries wolf gets switched off; a rate on the training procedure alone can hide how it behaves on driving it has never seen (final_test: 326/hour on 2 highway drives vs. 15/hour on cross-validated city/residential driving — a real training-coverage gap, not noise) |
+| False alarms per hour | HIGH-severity decisions on normal driving ÷ hours of normal driving. Reported two ways: a leave-one-out cross-validated estimate on `development` (used to choose settings) and the frozen model's rate on `final_test` (used to report the result) — never one instead of the other | An IDS that cries wolf gets switched off; a rate from the training procedure alone can hide how it behaves on driving it has never seen — see "Where final_test's false alarms actually come from" below for the real per-capture breakdown |
 | Detection latency | Inference time only (window collection excluded), mean/median/p95/max, measured on real ROAD windows on a laptop and on the actual ZGX Nano | The in-car safety claim is about milliseconds, and window time would dominate and hide the number that matters |
 | What each layer adds | v1 (Stage 1 timing only) vs. v2 (Stage 1 + Stage 2 payload checks), same frozen `final_test` set | Shows Stage 2 is what catches anything beyond fuzzing (0.4%→64.9% recall) — the reason the second stage exists. (A rules-alone baseline is not broken out separately in this build; Stage 1 already includes the frequency/range checks.) |
 | Car-side footprint | Trained model size (JSON parameters): 43 KB (v1) / 70 KB (v2, both stages); no compiled ML runtime dependency (plain Python, no numpy) | Supports "fits a gateway ECU": latency is stated as measured on the Nano's CPU (a lower bound, not proof), so size and dependency-freedom are the more portable evidence |
@@ -107,7 +128,7 @@ cd dashboard && npm install && npm run dev
 
 ## Real results (real ROAD data, never synthetic numbers presented as real)
 
-One-time held-out evaluation (`final_test`, never touched during development — see `CLAUDE.md`'s Final evaluation section):
+One-time held-out evaluation (`final_test`: 14 captures, 5,178 windows -- 259 attack, 4,919 normal -- never touched during development; see `CLAUDE.md`'s Final evaluation section):
 
 | | v1 (Stage 1 only) | v2 (Stage 1 + Stage 2) |
 |---|---|---|
@@ -118,6 +139,16 @@ One-time held-out evaluation (`final_test`, never touched during development —
 | Mean inference | 0.31 ms | 1.80 ms |
 
 v2's Stage 2 payload check is what catches anything beyond fuzzing attacks — the whole reason this project exists. It is also honestly not finished: false alarms on final_test (9.07%) are well above the 1% target, and two attack types are still missed entirely.
+
+**Where final_test's false alarms actually come from.** The 446 false alarms above are not spread evenly across final_test's 3 normal captures (`part3/per_capture_metrics.py`, closing `part3/metrics.py`'s own TODO that overlapping windows are correlated and need capture-level reporting, not one blended number):
+
+| Capture | Windows | False alarms | Rate |
+|---|---|---|---|
+| `ambient_highway_street_driving_long` | 3,764 | 433 | 11.5% |
+| `ambient_highway_street_driving_diagnostics` | 469 | 9 | 1.9% |
+| `ambient_dyno_drive_basic_short` | 444 | 4 | 0.9% |
+
+433 of 446 (97.1%) of every false alarm v2 raises on final_test comes from one single highway capture; the two highway captures together account for 442 of 446 (99.1%), while the one non-highway capture sits at a 0.9% rate -- in line with the proper leave-one-out estimate on `development` driving (30 alarms / 763 windows over 9 held-out drives = 141.5/hour, `results/crossval_ambient.json`). This is a training-coverage gap, not model noise: `train`/`development` contain no highway driving at all (both real highway drives are in `final_test`), so Stage 2's payload ranges have never seen highway-speed values for the fields they watch. The blended 9.07% headline hides this; the per-capture number doesn't.
 
 **Detection delay** (build plan requirement, same frozen `final_test` scoring pass, no re-run of anything): time from the real attack's onset to the first ATTACK-decision window closing, measured only on the 11 `final_test` captures with a real, continuous injection interval (fabrication/masquerade attacks — fuzzing has no single onset to measure from, so it's excluded).
 
@@ -131,7 +162,7 @@ v1 does eventually flag some attacks, but only after the payload-free timing sig
 
 ## Measured on the ZGX Nano GB10
 
-Run for real over SSH on the competition node (`spark-3f6`, aarch64): `bash setup.sh`, then both models scored against the same real ROAD validation windows on-device (`results/nano_benchmark_v1_real.json`, `results/nano_benchmark_v2_real.json`):
+Run for real over SSH on the competition node (`spark-3f6`, aarch64): `bash setup.sh`, then both models scored against the same 815 real ROAD validation windows on-device (`results/nano_benchmark_v1_real.json`, `results/nano_benchmark_v2_real.json`):
 
 | | v1 | v2 |
 |---|---|---|
@@ -146,12 +177,12 @@ Run for real over SSH on the competition node (`spark-3f6`, aarch64): `bash setu
 
 The HP brief asks for "an explicit, defensible, measurable decision about when to escalate." Our rule: escalate a window when its attack score falls within a band around the threshold; the band is the widest one that keeps escalations under a budget (30% here) on normal *validation* traffic. The local decision is always made first and never waits on the cloud.
 
-To measure whether that rule targets real mistakes, we score it against windows whose true label is known — the Red Team test path, where we made every attack (`part1/escalation_quality.py`, `results/escalation_quality_v2/demo_test.json`). No cloud is involved in this measurement.
+To measure whether that rule targets real mistakes, we score it against windows whose true label is known — **synthetic Red Team attacks injected into real `development` captures, not the real ROAD `final_test` attacks reported above** (`part1/escalation_quality.py`, `results/escalation_quality_v2/demo_test.json`). No cloud is involved in this measurement.
 
-| v2, 2,511 Red Team test windows | |
+| v2, 2,511 windows (synthetic Red Team attacks on `development` captures) | |
 |---|---|
 | Escalated | 898 (35.8%) |
-| Escalation precision (escalated windows the local model got wrong) | 48.1% |
+| Escalation precision (escalated windows the local model got wrong) | 48.1% (432 of 898 escalated) |
 | Escalation recall (local mistakes that were escalated) | 28.0% |
 | — of false alarms | **249 of 249 (100%)** |
 | — of missed attacks | 183 of 1,293 (14%) |
@@ -169,7 +200,8 @@ To measure whether that rule targets real mistakes, we score it against windows 
 ## What EdgeGuard does not yet catch, and why
 
 - **`max_engine_coolant_temp` (0% recall, both models).** The one final-test attack target Stage 2 never watches. It confirms the watch-list does not generalize to an unseen CAN ID — a real, disclosed limitation, not a hidden one.
-- **`reverse_light_off` (0% recall).** A one-bit signal flip inside a byte. Stage 2's payload checks work at the byte level; catching this needs decoded-signal checking (`part1/decode.py` exists and is tested, but nothing wires it into Stage 2 scoring yet).
+- **`reverse_light_off` (0% recall).** A one-bit signal flip inside a byte. Stage 2's payload checks work at the byte level; catching this needs decoded-signal checking (`part1/decode.py` exists and is tested, but nothing wires it into Stage 2 scoring yet). **Deliberately not attempted this close to the deadline:** any change to Stage 2's scoring is a new model, which means spending `final_test` a third time to validate it honestly -- the same risk that sank `v3`/`v4`/`v5` under time pressure. Documented as the clear next step, not attempted as a last-minute fix.
+- **Freeze-family attacks cap out around 16% recall, and we found out why (2026-09-25 diagnostic, no code change).** `frozen_break` scores a freeze by its percentile rank against every normal training window, but the watched field `0D0` legitimately sits pinned at its single most-extreme historical value in 224 of 581 (38.6%) normal training windows -- real dyno driving genuinely produces long runs of an unchanging value on this signal. A synthetic freeze attack pinning the same field to that same value therefore only ranks at the 61st percentile of "normal," nowhere near the ~99.9th-percentile alert threshold, even though the underlying frozen-value check itself fires correctly every time. A real sensitivity limit of percentile-rank scoring on this vehicle's driving data, not a bug -- full diagnostic in `CLAUDE.md`.
 - **A real hardening attempt (`v5`) failed its evidence-gate test.** We built a candidate from confirmed Red Team misses, validated it looked great against Red Team's own synthetic attacks, then ran it against the real held-out attacks: identical recall, nearly triple the false alarms. Full story, including why, in `CLAUDE.md`'s Hardening loop section — we're documenting this because a negative result honestly reported is worth more than a cherry-picked positive one.
 - **Confident misses are invisible to escalation** (see the escalation section above): the uncertainty band only sees windows near the threshold.
 - **The cloud second opinion itself is simulated.** The escalation path is wired and real (calibrated on validation data, sanitizes before sending, keeps working when the cloud is unreachable — tested on a laptop and on the Nano), but the stand-in cloud uses a fixed threshold not calibrated to our model, so the rate at which it "disagrees" (97.9%) is not a quality metric and we don't use it as one. The measured escalation numbers above don't depend on it.
