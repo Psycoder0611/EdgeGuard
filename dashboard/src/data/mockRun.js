@@ -94,4 +94,14 @@ export function buildMockRun(length = 240, seed = 7) {
   return run;
 }
 
-export const CAPTURE_META = { captureId: CAPTURE_ID, modelVersion: MODEL_VERSION, threshold: THRESHOLD };
+// Same real band used throughout the README/CLAUDE.md (v2, 30% budget,
+// calibrated on real validation scores) -- reused here so mock mode
+// exercises the same escalation display logic as the real feed.
+const ESCALATION_BAND_HALF_WIDTH = 0.09502826737612236;
+
+export const CAPTURE_META = {
+  captureId: CAPTURE_ID,
+  modelVersion: MODEL_VERSION,
+  threshold: THRESHOLD,
+  escalationBandHalfWidth: ESCALATION_BAND_HALF_WIDTH,
+};

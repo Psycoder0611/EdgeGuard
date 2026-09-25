@@ -469,6 +469,24 @@
   flex-wrap: wrap;
 }
 
+.routing-quality {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.routing-quality-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary, inherit);
+}
+
+.routing-quality-list li {
+  margin-bottom: 4px;
+}
+
 /* ---------- tabs ---------- */
 
 .tab-row {

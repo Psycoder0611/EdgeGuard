@@ -28,8 +28,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from defender.defender import Defender
+from integration.run_demo import calibrate_escalation_band
 from part1.pipeline import RoadData
 from part1.split_manifest import MANIFEST_PATH, load_manifest
+
+# Same budget used in the README/CLAUDE.md's real escalation runs and in
+# integration.run_demo's --max-escalation-rate examples.
+MAX_ESCALATION_RATE = 0.3
 
 # Real development captures, in the order they'll play. Each already mixes
 # normal driving with one injected attack burst (see defender/dev_check.py's
@@ -45,6 +50,14 @@ MODEL_VERSION = "v2"
 def build(data_dir, manifest_path, model_dir):
     defender = Defender.load(model_dir, MODEL_VERSION)
     road = RoadData(data_dir, manifest=load_manifest(manifest_path), window_s=defender.window_s or 1.0)
+
+    # Real band, calibrated on validation scores only -- never on the
+    # development windows this script replays (see part1.escalation_policy
+    # and integration.run_demo.calibrate_escalation_band). This lets the
+    # dashboard show, per window, whether it would fall inside the real
+    # escalation band, without duplicating the calibration logic.
+    band_half_width = calibrate_escalation_band(
+        defender, data_dir, manifest_path, MAX_ESCALATION_RATE)
 
     names = road.manifest.names("development")
     missing = [c for c in CAPTURES if c not in names]
@@ -70,6 +83,8 @@ def build(data_dir, manifest_path, model_dir):
         "captures": [road.capture_id(c) for c in CAPTURES],
         "modelVersion": MODEL_VERSION,
         "threshold": defender.threshold,
+        "escalationBandHalfWidth": band_half_width,
+        "maxEscalationRate": MAX_ESCALATION_RATE,
         "source": "real ROAD development captures, real v2 Defender inference "
                   "(build_real_run.py) -- not mock data",
     }

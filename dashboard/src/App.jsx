@@ -7,8 +7,10 @@ import ArchitectureDiagram from "./components/ArchitectureDiagram";
 import CarsView from "./components/CarsView";
 import { CanIdPanel, SimulatedResponsePanel, RoutingPanel } from "./components/DetailPanels";
 import { buildMockRun, CAPTURE_META } from "./data/mockRun";
+import { ESCALATION_QUALITY } from "./data/escalationQuality";
 import { connectLiveFeed } from "./data/liveFeed";
 import { useReplay } from "./utils/useReplay";
+import { isInEscalationBand } from "./utils/escalation";
 import "./App.css";
 
 const DATA_SOURCE = "live"; // "mock" (data/mockRun.js) or "live" (data/liveFeed.js, real v2 Defender output)
@@ -101,7 +103,11 @@ export default function App() {
             onAttackActionChange={setAttackAction}
           />
 
-          <RoutingPanel />
+          <RoutingPanel
+            output={replay.current}
+            escalated={isInEscalationBand(replay.current, meta.escalationBandHalfWidth)}
+            quality={ESCALATION_QUALITY}
+          />
 
           <AlertTimeline history={replay.history} />
         </main>

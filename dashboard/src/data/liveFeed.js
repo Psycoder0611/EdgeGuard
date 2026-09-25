@@ -31,6 +31,7 @@ export async function connectLiveFeed() {
       captureId: meta.captureId,
       modelVersion: meta.modelVersion,
       threshold: meta.threshold,
+      escalationBandHalfWidth: meta.escalationBandHalfWidth ?? null,
     },
   };
 }

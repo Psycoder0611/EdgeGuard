@@ -203,6 +203,34 @@ optional extra -- this section is that decision, made real.
   validation) plus 1 regression test in `tests/test_part1_escalation_policy.py`; 521 tests
   passing repo-wide.
 
+### Dashboard: fixed a stale "cloud not wired up" panel, 2026-09-25
+
+`RoutingPanel` still said "No cloud escalation path exists in the pipeline yet" and "CLOUD --
+not wired up" -- true when it was written, false since the escalation path was wired end to end
+(see the Cloud-escalation section above). Anyone opening the dashboard, including a judge, would
+have been told the opposite of what the repo actually does on its single most rubric-relevant
+feature. Fixed:
+
+- `dashboard/scripts/build_real_run.py` now calls `integration.run_demo.calibrate_escalation_band`
+  (real budget 0.3, same as everywhere else) and writes `escalationBandHalfWidth` into
+  `realRun.json`'s meta, alongside the existing real v2 inference output. Regenerated
+  `realRun.json` for real -- 95 of 188 replayed windows fall in the real band, so the badge
+  below actually changes state during playback, not a static claim.
+- `dashboard/src/utils/escalation.js`: a small client-side mirror of
+  `part1/escalation_policy.should_escalate()`, display-only -- the real decision is always made
+  in Python.
+- `RoutingPanel` now shows, per replayed window, whether it falls inside the real calibrated band
+  ("IN ESCALATION BAND -- would call cloud" / "CONFIDENT -- no escalation"), plus the real
+  measured escalation-quality numbers (precision 48.1%, all false alarms escalated, 183/1293
+  misses escalated, ~241 bytes/0 raw CAN bytes per escalation) from
+  `results/escalation_quality_v2/demo_test.json`, copied into `dashboard/src/data
+  /escalationQuality.js` with a comment pointing at the source file.
+- `mockRun.js`'s `CAPTURE_META` also carries a band (the same real calibrated value) so mock mode
+  exercises the identical display logic without crashing.
+
+Verified with `npm run build` (clean) and by computing escalation counts against the regenerated
+`realRun.json` directly in Node.
+
 ### Escalation quality measured against known labels, 2026-09-25 (`part1/escalation_quality.py`)
 
 Replaces the simulated cloud's "correction rate" as the escalation metric. That rate only measured

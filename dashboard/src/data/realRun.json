@@ -7,7 +7,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.15
+      "latency_ms": 7.67
     },
     {
       "window_id": "cap19_w0001",
@@ -16,7 +16,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap19_w0002",
@@ -25,7 +25,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap19_w0003",
@@ -34,7 +34,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.16
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap19_w0004",
@@ -43,7 +43,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap19_w0005",
@@ -52,7 +52,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.2
+      "latency_ms": 2.11
     },
     {
       "window_id": "cap19_w0006",
@@ -61,7 +61,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63412 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.23
+      "latency_ms": 2.36
     },
     {
       "window_id": "cap19_w0007",
@@ -70,7 +70,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63468 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 3.08
     },
     {
       "window_id": "cap19_w0008",
@@ -79,7 +79,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63543 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.87
+      "latency_ms": 3.06
     },
     {
       "window_id": "cap19_w0009",
@@ -88,7 +88,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63620 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap19_w0010",
@@ -97,7 +97,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63721 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap19_w0011",
@@ -106,7 +106,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63828 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.91
     },
     {
       "window_id": "cap19_w0012",
@@ -115,7 +115,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63948 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap19_w0013",
@@ -124,7 +124,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64079 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 3.03
     },
     {
       "window_id": "cap19_w0014",
@@ -133,7 +133,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64226 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.95
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap19_w0015",
@@ -142,7 +142,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64377 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.97
+      "latency_ms": 2.93
     },
     {
       "window_id": "cap19_w0016",
@@ -151,7 +151,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64548 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.98
+      "latency_ms": 3.01
     },
     {
       "window_id": "cap19_w0017",
@@ -160,7 +160,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64717 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.81
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap19_w0018",
@@ -169,7 +169,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64902 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 3.05
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap19_w0019",
@@ -187,7 +187,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65264 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 3.03
+      "latency_ms": 2.99
     },
     {
       "window_id": "cap19_w0021",
@@ -196,7 +196,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65323 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.93
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap19_w0022",
@@ -205,7 +205,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65371 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap19_w0023",
@@ -214,7 +214,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65418 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.87
+      "latency_ms": 3.06
     },
     {
       "window_id": "cap19_w0024",
@@ -223,7 +223,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 3.01
     },
     {
       "window_id": "cap19_w0025",
@@ -232,7 +232,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.98
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap19_w0026",
@@ -241,7 +241,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.88
+      "latency_ms": 3.05
     },
     {
       "window_id": "cap19_w0027",
@@ -250,7 +250,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap28_w0000",
@@ -259,7 +259,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap28_w0001",
@@ -268,7 +268,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap28_w0002",
@@ -286,7 +286,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.23
     },
     {
       "window_id": "cap28_w0004",
@@ -295,7 +295,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.15
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0005",
@@ -304,7 +304,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap28_w0006",
@@ -313,7 +313,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0007",
@@ -322,7 +322,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap28_w0008",
@@ -331,7 +331,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.21
     },
     {
       "window_id": "cap28_w0009",
@@ -340,7 +340,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.18
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0010",
@@ -349,7 +349,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.13
     },
     {
       "window_id": "cap28_w0011",
@@ -358,7 +358,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0012",
@@ -367,7 +367,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.31
     },
     {
       "window_id": "cap28_w0013",
@@ -376,7 +376,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0014",
@@ -385,7 +385,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.17
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap28_w0015",
@@ -394,7 +394,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap28_w0016",
@@ -403,7 +403,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.24
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0017",
@@ -412,7 +412,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0018",
@@ -421,7 +421,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap28_w0019",
@@ -430,7 +430,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.13
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0020",
@@ -439,7 +439,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0021",
@@ -448,7 +448,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.22
+      "latency_ms": 2.13
     },
     {
       "window_id": "cap28_w0022",
@@ -457,7 +457,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0023",
@@ -466,7 +466,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.12
     },
     {
       "window_id": "cap28_w0024",
@@ -475,7 +475,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0025",
@@ -484,7 +484,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.11
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap28_w0026",
@@ -493,7 +493,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.23
+      "latency_ms": 2.13
     },
     {
       "window_id": "cap28_w0027",
@@ -502,7 +502,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.13
     },
     {
       "window_id": "cap28_w0028",
@@ -511,7 +511,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap28_w0029",
@@ -520,7 +520,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0030",
@@ -529,7 +529,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0031",
@@ -538,7 +538,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0032",
@@ -547,7 +547,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.11
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0033",
@@ -556,7 +556,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.15
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap28_w0034",
@@ -565,7 +565,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.14
+      "latency_ms": 2.26
     },
     {
       "window_id": "cap28_w0035",
@@ -574,7 +574,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.11
+      "latency_ms": 2.31
     },
     {
       "window_id": "cap28_w0036",
@@ -583,7 +583,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.22
     },
     {
       "window_id": "cap28_w0037",
@@ -592,7 +592,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.31
     },
     {
       "window_id": "cap28_w0038",
@@ -601,7 +601,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.21
+      "latency_ms": 2.28
     },
     {
       "window_id": "cap28_w0039",
@@ -610,7 +610,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.23
     },
     {
       "window_id": "cap28_w0040",
@@ -619,7 +619,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.15
+      "latency_ms": 2.26
     },
     {
       "window_id": "cap28_w0041",
@@ -628,7 +628,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.27
     },
     {
       "window_id": "cap28_w0042",
@@ -637,7 +637,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64003 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.88
+      "latency_ms": 3.01
     },
     {
       "window_id": "cap28_w0043",
@@ -646,7 +646,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.88
+      "latency_ms": 3.06
     },
     {
       "window_id": "cap28_w0044",
@@ -655,7 +655,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 3.09
     },
     {
       "window_id": "cap28_w0045",
@@ -664,7 +664,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap28_w0046",
@@ -673,7 +673,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.87
+      "latency_ms": 2.89
     },
     {
       "window_id": "cap28_w0047",
@@ -682,7 +682,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 2.99
     },
     {
       "window_id": "cap28_w0048",
@@ -691,7 +691,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.83
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap28_w0049",
@@ -700,7 +700,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap28_w0050",
@@ -727,7 +727,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 3.01
+      "latency_ms": 2.93
     },
     {
       "window_id": "cap28_w0053",
@@ -736,7 +736,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap28_w0054",
@@ -745,7 +745,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.83
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap28_w0055",
@@ -754,7 +754,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 3.03
+      "latency_ms": 2.96
     },
     {
       "window_id": "cap28_w0056",
@@ -763,7 +763,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.93
+      "latency_ms": 2.92
     },
     {
       "window_id": "cap28_w0057",
@@ -772,7 +772,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.88
+      "latency_ms": 2.91
     },
     {
       "window_id": "cap28_w0058",
@@ -781,7 +781,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.96
     },
     {
       "window_id": "cap28_w0059",
@@ -790,7 +790,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.94
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap28_w0060",
@@ -799,7 +799,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap28_w0061",
@@ -808,7 +808,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.92
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap28_w0062",
@@ -817,7 +817,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap28_w0063",
@@ -826,7 +826,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63748 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 3.06
     },
     {
       "window_id": "cap28_w0064",
@@ -835,7 +835,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.83
+      "latency_ms": 2.93
     },
     {
       "window_id": "cap28_w0065",
@@ -844,7 +844,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63748 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap28_w0066",
@@ -853,7 +853,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
       "model_version": "v2",
-      "latency_ms": 2.45
+      "latency_ms": 2.53
     },
     {
       "window_id": "cap28_w0067",
@@ -862,7 +862,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.13
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0068",
@@ -871,7 +871,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.13
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap28_w0069",
@@ -889,7 +889,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap28_w0071",
@@ -898,7 +898,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap28_w0072",
@@ -907,7 +907,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap28_w0073",
@@ -916,7 +916,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0074",
@@ -925,7 +925,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.21
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0075",
@@ -934,7 +934,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0076",
@@ -943,7 +943,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.14
+      "latency_ms": 2.21
     },
     {
       "window_id": "cap28_w0077",
@@ -952,7 +952,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0078",
@@ -961,7 +961,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0079",
@@ -970,7 +970,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.16
+      "latency_ms": 2.21
     },
     {
       "window_id": "cap28_w0080",
@@ -979,7 +979,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap28_w0081",
@@ -988,7 +988,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.14
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap28_w0082",
@@ -997,7 +997,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0083",
@@ -1006,7 +1006,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0084",
@@ -1015,7 +1015,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.06
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap28_w0085",
@@ -1024,7 +1024,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.15
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap28_w0086",
@@ -1033,7 +1033,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.17
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap28_w0087",
@@ -1042,7 +1042,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0000",
@@ -1051,7 +1051,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.23
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap42_w0001",
@@ -1060,7 +1060,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.25
     },
     {
       "window_id": "cap42_w0002",
@@ -1069,7 +1069,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0003",
@@ -1078,7 +1078,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.26
     },
     {
       "window_id": "cap42_w0004",
@@ -1087,7 +1087,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.17
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0005",
@@ -1096,7 +1096,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.13
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0006",
@@ -1105,7 +1105,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.17
+      "latency_ms": 2.14
     },
     {
       "window_id": "cap42_w0007",
@@ -1114,7 +1114,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.09
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0008",
@@ -1123,7 +1123,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 2] No payload anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap42_w0009",
@@ -1132,7 +1132,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.21
     },
     {
       "window_id": "cap42_w0010",
@@ -1141,7 +1141,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.11
+      "latency_ms": 2.21
     },
     {
       "window_id": "cap42_w0011",
@@ -1150,7 +1150,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.14
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0012",
@@ -1159,7 +1159,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0013",
@@ -1177,7 +1177,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.22
     },
     {
       "window_id": "cap42_w0015",
@@ -1186,7 +1186,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 1] Timing anomaly (rate_excess): ID 671: 46.9x normal frame rate",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.16
     },
     {
       "window_id": "cap42_w0016",
@@ -1195,7 +1195,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.19
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0017",
@@ -1204,7 +1204,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.16
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0018",
@@ -1213,7 +1213,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.23
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap42_w0019",
@@ -1231,7 +1231,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.62
+      "latency_ms": 2.66
     },
     {
       "window_id": "cap42_w0021",
@@ -1240,7 +1240,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap42_w0022",
@@ -1249,7 +1249,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.86
+      "latency_ms": 2.99
     },
     {
       "window_id": "cap42_w0023",
@@ -1258,7 +1258,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.94
+      "latency_ms": 2.89
     },
     {
       "window_id": "cap42_w0024",
@@ -1267,7 +1267,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.92
+      "latency_ms": 2.93
     },
     {
       "window_id": "cap42_w0025",
@@ -1276,7 +1276,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.91
     },
     {
       "window_id": "cap42_w0026",
@@ -1285,7 +1285,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap42_w0027",
@@ -1294,7 +1294,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 2.99
     },
     {
       "window_id": "cap42_w0028",
@@ -1303,7 +1303,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.87
+      "latency_ms": 2.91
     },
     {
       "window_id": "cap42_w0029",
@@ -1312,7 +1312,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.95
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap42_w0030",
@@ -1321,7 +1321,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.92
     },
     {
       "window_id": "cap42_w0031",
@@ -1330,7 +1330,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.89
+      "latency_ms": 3.02
     },
     {
       "window_id": "cap42_w0032",
@@ -1339,7 +1339,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.94
+      "latency_ms": 3.01
     },
     {
       "window_id": "cap42_w0033",
@@ -1348,7 +1348,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.99
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap42_w0034",
@@ -1357,7 +1357,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.98
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap42_w0035",
@@ -1366,7 +1366,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 2.96
     },
     {
       "window_id": "cap42_w0036",
@@ -1375,7 +1375,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap42_w0037",
@@ -1384,7 +1384,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 2.88
     },
     {
       "window_id": "cap42_w0038",
@@ -1393,7 +1393,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.87
     },
     {
       "window_id": "cap42_w0039",
@@ -1402,7 +1402,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 2.89
     },
     {
       "window_id": "cap42_w0040",
@@ -1411,7 +1411,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 3.0
     },
     {
       "window_id": "cap42_w0041",
@@ -1420,7 +1420,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.83
+      "latency_ms": 2.96
     },
     {
       "window_id": "cap42_w0042",
@@ -1429,7 +1429,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.84
+      "latency_ms": 2.9
     },
     {
       "window_id": "cap42_w0043",
@@ -1438,7 +1438,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap42_w0044",
@@ -1447,7 +1447,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 2.92
     },
     {
       "window_id": "cap42_w0045",
@@ -1456,7 +1456,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.82
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap42_w0046",
@@ -1465,7 +1465,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.91
+      "latency_ms": 3.01
     },
     {
       "window_id": "cap42_w0047",
@@ -1474,7 +1474,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap42_w0048",
@@ -1483,7 +1483,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.98
     },
     {
       "window_id": "cap42_w0049",
@@ -1492,7 +1492,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.89
+      "latency_ms": 2.97
     },
     {
       "window_id": "cap42_w0050",
@@ -1501,7 +1501,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.85
+      "latency_ms": 2.9
     },
     {
       "window_id": "cap42_w0051",
@@ -1510,7 +1510,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.92
     },
     {
       "window_id": "cap42_w0052",
@@ -1519,7 +1519,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.96
+      "latency_ms": 2.99
     },
     {
       "window_id": "cap42_w0053",
@@ -1528,7 +1528,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.96
+      "latency_ms": 2.94
     },
     {
       "window_id": "cap42_w0054",
@@ -1537,7 +1537,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.88
+      "latency_ms": 2.9
     },
     {
       "window_id": "cap42_w0055",
@@ -1546,7 +1546,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.9
+      "latency_ms": 2.89
     },
     {
       "window_id": "cap42_w0056",
@@ -1555,7 +1555,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.89
+      "latency_ms": 2.95
     },
     {
       "window_id": "cap42_w0057",
@@ -1564,7 +1564,7 @@
       "decision": "ATTACK",
       "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
       "model_version": "v2",
-      "latency_ms": 2.32
+      "latency_ms": 2.44
     },
     {
       "window_id": "cap42_w0058",
@@ -1573,7 +1573,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.24
     },
     {
       "window_id": "cap42_w0059",
@@ -1582,7 +1582,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0060",
@@ -1591,7 +1591,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.07
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0061",
@@ -1600,7 +1600,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.2
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0062",
@@ -1609,7 +1609,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.18
+      "latency_ms": 2.13
     },
     {
       "window_id": "cap42_w0063",
@@ -1618,7 +1618,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.11
+      "latency_ms": 2.19
     },
     {
       "window_id": "cap42_w0064",
@@ -1627,7 +1627,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.2
     },
     {
       "window_id": "cap42_w0065",
@@ -1636,7 +1636,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.23
     },
     {
       "window_id": "cap42_w0066",
@@ -1645,7 +1645,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0067",
@@ -1654,7 +1654,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.14
+      "latency_ms": 2.29
     },
     {
       "window_id": "cap42_w0068",
@@ -1663,7 +1663,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.12
+      "latency_ms": 2.18
     },
     {
       "window_id": "cap42_w0069",
@@ -1672,7 +1672,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.08
+      "latency_ms": 2.15
     },
     {
       "window_id": "cap42_w0070",
@@ -1681,7 +1681,7 @@
       "decision": "ACCEPT",
       "evidence": "[Stage 1] No timing anomaly beyond normal training range",
       "model_version": "v2",
-      "latency_ms": 2.1
+      "latency_ms": 2.17
     },
     {
       "window_id": "cap42_w0071",
@@ -1702,6 +1702,8 @@
     ],
     "modelVersion": "v2",
     "threshold": 0.9988083361046447,
+    "escalationBandHalfWidth": 0.09502826737612236,
+    "maxEscalationRate": 0.3,
     "source": "real ROAD development captures, real v2 Defender inference (build_real_run.py) -- not mock data"
   }
 }
