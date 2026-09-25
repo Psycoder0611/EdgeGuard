@@ -10,17 +10,17 @@
     "large_jump"
   ],
   "max_false_alarm_rate": 0.01,
-  "max_windows_per_capture": 5,
-  "calibration_windows": 10,
-  "threshold": 5e-324,
+  "max_windows_per_capture": 100000,
+  "calibration_windows": 815,
+  "threshold": 0.9000000000000001,
   "per_capture": [
     {
       "capture_id": "cap17",
       "family": "correlated_signal",
       "kind": "fabrication",
       "fold": 1,
-      "attacked": 3,
-      "normal": 2,
+      "attacked": 22,
+      "normal": 11,
       "detected": 0,
       "false_alarms": 0
     },
@@ -29,7 +29,7 @@
       "family": "correlated_signal",
       "kind": "masquerade",
       "fold": 1,
-      "attacked": 3,
+      "attacked": 22,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -39,8 +39,8 @@
       "family": "fuzzing",
       "kind": "fuzzing",
       "fold": 1,
-      "attacked": 1,
-      "normal": 4,
+      "attacked": 4,
+      "normal": 16,
       "detected": 0,
       "false_alarms": 0
     },
@@ -49,8 +49,8 @@
       "family": "max_speedometer",
       "kind": "fabrication",
       "fold": 1,
-      "attacked": 1,
-      "normal": 4,
+      "attacked": 25,
+      "normal": 63,
       "detected": 0,
       "false_alarms": 0
     },
@@ -59,7 +59,7 @@
       "family": "max_speedometer",
       "kind": "masquerade",
       "fold": 1,
-      "attacked": 1,
+      "attacked": 25,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -69,8 +69,8 @@
       "family": "reverse_light_off",
       "kind": "fabrication",
       "fold": 1,
-      "attacked": 1,
-      "normal": 4,
+      "attacked": 8,
+      "normal": 20,
       "detected": 0,
       "false_alarms": 0
     },
@@ -79,7 +79,7 @@
       "family": "reverse_light_off",
       "kind": "masquerade",
       "fold": 1,
-      "attacked": 1,
+      "attacked": 8,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -89,17 +89,17 @@
       "family": "reverse_light_on",
       "kind": "fabrication",
       "fold": 1,
-      "attacked": 2,
-      "normal": 3,
+      "attacked": 21,
+      "normal": 33,
       "detected": 0,
-      "false_alarms": 1
+      "false_alarms": 0
     },
     {
       "capture_id": "cap41",
       "family": "reverse_light_on",
       "kind": "masquerade",
       "fold": 1,
-      "attacked": 2,
+      "attacked": 21,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -109,8 +109,8 @@
       "family": "correlated_signal",
       "kind": "fabrication",
       "fold": 2,
-      "attacked": 4,
-      "normal": 1,
+      "attacked": 22,
+      "normal": 6,
       "detected": 0,
       "false_alarms": 0
     },
@@ -119,7 +119,7 @@
       "family": "correlated_signal",
       "kind": "masquerade",
       "fold": 2,
-      "attacked": 4,
+      "attacked": 22,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -129,9 +129,9 @@
       "family": "fuzzing",
       "kind": "fuzzing",
       "fold": 2,
-      "attacked": 1,
-      "normal": 4,
-      "detected": 1,
+      "attacked": 2,
+      "normal": 11,
+      "detected": 0,
       "false_alarms": 0
     },
     {
@@ -139,8 +139,8 @@
       "family": "max_speedometer",
       "kind": "fabrication",
       "fold": 2,
-      "attacked": 2,
-      "normal": 3,
+      "attacked": 32,
+      "normal": 27,
       "detected": 0,
       "false_alarms": 0
     },
@@ -149,7 +149,7 @@
       "family": "max_speedometer",
       "kind": "masquerade",
       "fold": 2,
-      "attacked": 2,
+      "attacked": 32,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -159,17 +159,17 @@
       "family": "reverse_light_off",
       "kind": "fabrication",
       "fold": 2,
-      "attacked": 3,
-      "normal": 2,
-      "detected": 3,
-      "false_alarms": 1
+      "attacked": 24,
+      "normal": 16,
+      "detected": 0,
+      "false_alarms": 0
     },
     {
       "capture_id": "cap37",
       "family": "reverse_light_off",
       "kind": "masquerade",
       "fold": 2,
-      "attacked": 3,
+      "attacked": 24,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -179,9 +179,9 @@
       "family": "reverse_light_on",
       "kind": "fabrication",
       "fold": 2,
-      "attacked": 2,
-      "normal": 3,
-      "detected": 1,
+      "attacked": 38,
+      "normal": 34,
+      "detected": 0,
       "false_alarms": 0
     },
     {
@@ -189,7 +189,7 @@
       "family": "reverse_light_on",
       "kind": "masquerade",
       "fold": 2,
-      "attacked": 2,
+      "attacked": 38,
       "normal": 0,
       "detected": 0,
       "false_alarms": 0
@@ -197,15 +197,15 @@
   ],
   "macro_recall_by_family": {
     "correlated_signal": 0.0,
-    "fuzzing": 0.5,
+    "fuzzing": 0.0,
     "max_speedometer": 0.0,
-    "reverse_light_off": 0.375,
-    "reverse_light_on": 0.125
+    "reverse_light_off": 0.0,
+    "reverse_light_on": 0.0
   },
-  "overall_recall": 0.1316,
+  "overall_recall": 0.0,
   "false_alarms_in_attack_captures": {
-    "alarms": 2,
-    "windows": 30,
-    "false_alarm_rate": 0.066667
+    "alarms": 0,
+    "windows": 237,
+    "false_alarm_rate": 0.0
   }
 }
