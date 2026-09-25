@@ -94,12 +94,23 @@ def _p95(values: List[float]) -> float:
     return statistics.quantiles(values, n=20, method="inclusive")[18]
 
 
-def run_benchmark(defender: Defender, windows: Iterable[TrafficWindow],
+def run_benchmark(defender, windows: Iterable[TrafficWindow],
                   mock_traffic: bool,
                   consumer: Optional[SimulatedConsumer] = None):
-    """Score every window locally. Returns (records, summary)."""
-    if not isinstance(defender, Defender):
-        raise TypeError("run_benchmark() needs a Defender")
+    """Score every window locally. Returns (records, summary).
+
+    defender only needs .score_window(window) -> DefenderOutput and a
+    .model_version attribute -- the same duck-typed interface
+    defender.defender.Defender, defender.timing_cnn.TimingCNNDefender,
+    defender.fused_defender.FusedV2TimingCNNDefender and
+    defender.defender_llm.DefenderLLMDefender all already share (it is what
+    integration/run_final_evaluation.py relies on too) -- so this benchmarks
+    whichever one you are actually about to ship, not only a plain v1/v2
+    Defender."""
+    if not (hasattr(defender, "score_window") and hasattr(defender, "model_version")):
+        raise TypeError("run_benchmark() needs an object with score_window() and "
+                        "model_version -- e.g. a Defender, TimingCNNDefender, or "
+                        "FusedV2TimingCNNDefender")
     consumer = consumer or SimulatedConsumer()
 
     records: List[WindowRecord] = []
@@ -195,6 +206,11 @@ def main(argv=None) -> int:
                         help="number of MOCK windows to score (default 200; --mock only)")
     parser.add_argument("--model-version",
                         help="real mode: trained model version to benchmark, e.g. v1 or v2")
+    parser.add_argument("--cnn-model-dir",
+                        help="real mode: if given, benchmark FusedV2TimingCNNDefender instead "
+                             "of a plain Defender -- loads v2 from --model-dir plus the "
+                             "TimingCNN checkpoint from this directory "
+                             "(defender/train_timing_cnn.py's output)")
     parser.add_argument("--data-dir", default="data/road",
                         help="ROAD folder with ambient/ attacks/ (default data/road; real mode "
                              "only)")
@@ -214,10 +230,12 @@ def main(argv=None) -> int:
     parser.add_argument("--output", required=True, help="where to save the JSON results")
     args = parser.parse_args(argv)
 
-    if args.mock and args.model_version:
-        parser.error("--mock and --model-version are mutually exclusive; choose one mode")
-    if not args.mock and args.model_version is None:
-        parser.error("Choose a mode: --mock, or --model-version (e.g. v1 or v2) for real mode")
+    if args.mock and (args.model_version or args.cnn_model_dir):
+        parser.error("--mock and --model-version/--cnn-model-dir are mutually exclusive; "
+                     "choose one mode")
+    if not args.mock and args.model_version is None and args.cnn_model_dir is None:
+        parser.error("Choose a mode: --mock, --model-version (e.g. v1 or v2), or "
+                     "--cnn-model-dir for the fused detector")
 
     if args.mock:
         if args.windows < 1:
@@ -242,7 +260,14 @@ def main(argv=None) -> int:
         parser.error("--max-windows must be at least 1")
     captures = [c.strip() for c in args.captures.split(",")] if args.captures else None
 
-    defender = Defender.load(args.model_dir, args.model_version)
+    if args.cnn_model_dir:
+        from defender.fused_defender import FusedV2TimingCNNDefender
+        from defender.timing_cnn import TimingCNNModel
+        v2 = Defender.load(args.model_dir, "v2")
+        cnn = TimingCNNModel.load(args.cnn_model_dir)
+        defender = FusedV2TimingCNNDefender(v2, cnn)
+    else:
+        defender = Defender.load(args.model_dir, args.model_version)
     windows, capture_names = real_windows(args.data_dir, args.manifest, args.group,
                                           captures=captures, max_windows=args.max_windows)
     records, summary = run_benchmark(defender, windows, mock_traffic=False)

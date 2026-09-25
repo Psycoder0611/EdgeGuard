@@ -68,9 +68,29 @@ def test_rejects_empty_window_list(mock_defender):
         run_benchmark(mock_defender, [], mock_traffic=True)
 
 
-def test_rejects_non_defender():
-    with pytest.raises(TypeError, match="needs a Defender"):
+def test_rejects_an_object_with_no_score_window():
+    with pytest.raises(TypeError, match="needs an object with score_window"):
         run_benchmark("not a defender", mock_windows(1), mock_traffic=True)
+
+
+class DuckTypedDefender:
+    """No relation to defender.defender.Defender at all -- proves
+    run_benchmark() only needs score_window()/model_version, matching
+    TimingCNNDefender / FusedV2TimingCNNDefender / DefenderLLMDefender."""
+
+    model_version = "duck_v1"
+
+    def score_window(self, window):
+        from shared.schemas import DefenderOutput
+        return DefenderOutput(window_id=window.window_id, attack_score=0.1,
+                              threshold=0.5, decision="ACCEPT", evidence="duck",
+                              model_version=self.model_version, latency_ms=1.0)
+
+
+def test_accepts_any_duck_typed_defender_not_just_defender():
+    records, summary = run_benchmark(DuckTypedDefender(), mock_windows(5), mock_traffic=True)
+    assert summary.windows == 5
+    assert summary.model_version == "duck_v1"
 
 
 def test_command_line_mock_run_saves_results(tmp_path, capsys):
@@ -202,3 +222,36 @@ def test_command_line_real_run_missing_model_gives_clear_error(fake_road, tmp_pa
              "--manifest", str(fake_road.manifest_path),
              "--model-dir", str(tmp_path / "no_models_here"),
              "--output", str(out)])
+
+
+def test_command_line_real_run_benchmarks_the_fused_detector(fake_road, tmp_path, monkeypatch):
+    """--cnn-model-dir benchmarks FusedV2TimingCNNDefender end to end. Needs
+    torch (TimingCNNModel/FusedV2TimingCNNDefender import it) -- skipped
+    wherever torch isn't installed, same as tests/test_timing_cnn.py."""
+    pytest.importorskip("torch")
+    import defender.nano_runner as nano_runner_mod
+    from defender.fused_defender import FusedV2TimingCNNDefender
+    from defender.timing_cnn import TimingCNNModel
+
+    model_dir = train(fake_road)
+
+    class FakeCnn:
+        fitted = True
+        threshold = 0.5
+
+        def predict_proba_attack(self, rows):
+            return [0.0 for _ in rows]
+
+    monkeypatch.setattr(TimingCNNModel, "load", classmethod(lambda cls, path: FakeCnn()))
+
+    out = tmp_path / "bench_fused.json"
+    rc = nano_runner_mod.main(["--cnn-model-dir", "irrelevant/fake/path",
+                              "--data-dir", str(fake_road.data_dir),
+                              "--manifest", str(fake_road.manifest_path),
+                              "--model-dir", str(model_dir),
+                              "--group", "train",
+                              "--output", str(out)])
+    assert rc == 0
+    saved = json.loads(out.read_text(encoding="utf-8"))
+    assert saved["summary"]["model_version"] == "fused_v2_timing_cnn_v1"
+    assert saved["summary"]["windows"] > 0
