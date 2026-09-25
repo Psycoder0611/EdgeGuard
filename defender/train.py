@@ -80,6 +80,8 @@ class TrainingReport(BaseModel):
     stage2_watch_ids: Optional[List[str]] = None
     # Stage 2 frozen check mode ("width" = v2, "rate" = v3). None for v1.
     stage2_frozen_mode: Optional[str] = None
+    # Stage 2 out-of-range bound percentile (None = strict min/max). None for v1.
+    stage2_bound_percentile: Optional[float] = None
 
 
 def _to_list(windows: Iterable[TrafficWindow], name: str) -> List[TrafficWindow]:
@@ -211,6 +213,7 @@ def train_v2(
     stage2_range_captures=None,
     stage2_watch_ids: Optional[Sequence[str]] = None,
     stage2_frozen_mode: str = "width",
+    stage2_bound_percentile: Optional[float] = None,
 ) -> TrainingReport:
     """Build v2 = v1's Stage 1 (UNCHANGED) + a NEW Stage 2, fused, with a
     threshold re-chosen on the fused score. Returns a TrainingReport.
@@ -231,6 +234,9 @@ def train_v2(
     "6E0"]), chosen from DEVELOPMENT attacks only. None watches every ID.
 
     stage2_frozen_mode: "width" (v2) or "rate" (v3 hardening, see stage2.py).
+
+    stage2_bound_percentile: optional Stage 2 out-of-range bound percentile
+    (None = strict min/max, v1/v2/v3 behavior; see stage2.py for the trade-off).
     """
     if not isinstance(model_version, str) or not model_version:
         raise ValueError("model_version must be a non-empty string, e.g. 'v2'")
@@ -283,7 +289,8 @@ def train_v2(
         )
 
     # NEW Stage 2 only. Stage 1 is v1's, unchanged.
-    stage2 = Stage2Model(watch_ids=stage2_watch_ids, frozen_mode=stage2_frozen_mode).fit(
+    stage2 = Stage2Model(watch_ids=stage2_watch_ids, frozen_mode=stage2_frozen_mode,
+                         bound_percentile=stage2_bound_percentile).fit(
         train, range_captures=stage2_range_captures)
 
     fused_scores = [fuse(v1_stage1.score(w), stage2.score(w)).score for w in validation]
@@ -305,6 +312,7 @@ def train_v2(
         stage2_ranges_from_full_captures=stage2_range_captures is not None,
         stage2_watch_ids=stage2.watch_ids,
         stage2_frozen_mode=stage2.frozen_mode,
+        stage2_bound_percentile=stage2.bound_percentile,
     )
 
     # Save v1's Stage 1 again under the v2 name (identical content, just

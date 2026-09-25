@@ -189,3 +189,13 @@ def test_report_records_full_capture_ranges(tmp_path):
 def test_report_default_is_windows_only(tmp_path):
     train_v1(tmp_path)
     assert run_v2(tmp_path).stage2_ranges_from_full_captures is False
+
+def test_v2_bound_percentile_defaults_to_none_and_can_be_set(tmp_path):
+    train_v1(tmp_path)
+    report_default = run_v2(tmp_path)
+    assert report_default.stage2_bound_percentile is None
+
+    report_p = run_v2(tmp_path, model_version="v2p", stage2_bound_percentile=10.0)
+    assert report_p.stage2_bound_percentile == 10.0
+    defender = Defender.load(tmp_path, "v2p")
+    assert defender.stage2.bound_percentile == 10.0

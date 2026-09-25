@@ -23,6 +23,11 @@ captures: only the train and validation normal drives.
 --harden-v3 trains ONLY v3 (v1's Stage 1 + Stage 2 with the "rate" frozen
 check), from the same captures and settings, and leaves v1 and v2 untouched.
 
+--harden-v4 trains ONLY v4 (v1's Stage 1 + Stage 2 with percentile
+out-of-range bounds instead of strict min/max, "width" frozen check
+otherwise unchanged from v2), isolating bound_percentile as the one
+difference from v2. Requires --bound-percentile.
+
 The false-alarm rate has NO default: it is a team decision.
 """
 
@@ -65,12 +70,23 @@ def main(argv=None) -> int:
                              'or "all" to watch every ID')
     parser.add_argument("--harden-v3", action="store_true",
                         help="train only v3 (rate frozen check); v1 must already exist")
+    parser.add_argument("--harden-v4", action="store_true",
+                        help="train only v4 (percentile out-of-range bounds); v1 must "
+                             "already exist; requires --bound-percentile")
+    parser.add_argument("--bound-percentile", type=float, default=None,
+                        help="Stage 2 out-of-range bounds as a percentile, e.g. 1.0 to "
+                             "trim the extreme 1%% off each side (default: strict min/max, "
+                             "used only with --harden-v4)")
     parser.add_argument("--overwrite", action="store_true",
                         help="replace existing v1/v2 files (only if never evaluated)")
     args = parser.parse_args(argv)
 
     if args.max_windows_per_capture < 1:
         parser.error("--max-windows-per-capture must be at least 1")
+    if args.harden_v4 and args.bound_percentile is None:
+        parser.error("--harden-v4 requires --bound-percentile")
+    if args.harden_v3 and args.harden_v4:
+        parser.error("pass only one of --harden-v3 / --harden-v4")
 
     watch = None if args.stage2_watch.strip().lower() == "all" else \
         [i for i in args.stage2_watch.split(",") if i.strip()]
@@ -97,6 +113,14 @@ def main(argv=None) -> int:
                       stage2_range_captures=full_train_frames, stage2_watch_ids=watch,
                       stage2_frozen_mode="rate")
         reports = (v3,)
+    elif args.harden_v4:
+        print(f"Training v4 (v1 Stage 1 + Stage 2 with {args.bound_percentile}%"
+              " percentile out-of-range bounds; this can take several minutes)...")
+        v4 = train_v2(args.model_dir, "v1", train, validation, "v4", args.model_dir,
+                      args.window_s, stride_s, overwrite=args.overwrite,
+                      stage2_range_captures=full_train_frames, stage2_watch_ids=watch,
+                      stage2_bound_percentile=args.bound_percentile)
+        reports = (v4,)
     else:
         print("Training v1 (Stage 1)...")
         v1 = train_defender(train, validation, args.max_false_alarm_rate, "v1", args.model_dir,
@@ -116,7 +140,8 @@ def main(argv=None) -> int:
               f"validation false-alarm rate {report.validation_false_alarm_rate:.4f} "
               f"(target {report.max_false_alarm_rate})")
     print(f"Stage 2 watch-list: {reports[-1].stage2_watch_ids or 'all IDs'}"
-          f"  |  frozen check: {reports[-1].stage2_frozen_mode}")
+          f"  |  frozen check: {reports[-1].stage2_frozen_mode}"
+          f"  |  bound percentile: {reports[-1].stage2_bound_percentile}")
     print(f"Models saved in {args.model_dir}/")
     return 0
 

@@ -1,0 +1,1707 @@
+{
+  "run": [
+    {
+      "window_id": "cap19_w0000",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap19_w0001",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap19_w0002",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap19_w0003",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.16
+    },
+    {
+      "window_id": "cap19_w0004",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap19_w0005",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.2
+    },
+    {
+      "window_id": "cap19_w0006",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63412 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.23
+    },
+    {
+      "window_id": "cap19_w0007",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63468 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap19_w0008",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63543 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.87
+    },
+    {
+      "window_id": "cap19_w0009",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63620 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap19_w0010",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63721 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap19_w0011",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63828 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap19_w0012",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 63948 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap19_w0013",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64079 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap19_w0014",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64226 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.95
+    },
+    {
+      "window_id": "cap19_w0015",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64377 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.97
+    },
+    {
+      "window_id": "cap19_w0016",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64548 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.98
+    },
+    {
+      "window_id": "cap19_w0017",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64717 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.81
+    },
+    {
+      "window_id": "cap19_w0018",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 64902 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 3.05
+    },
+    {
+      "window_id": "cap19_w0019",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65078 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 3.02
+    },
+    {
+      "window_id": "cap19_w0020",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65264 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 3.03
+    },
+    {
+      "window_id": "cap19_w0021",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65323 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.93
+    },
+    {
+      "window_id": "cap19_w0022",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65371 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap19_w0023",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65418 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.87
+    },
+    {
+      "window_id": "cap19_w0024",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap19_w0025",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.98
+    },
+    {
+      "window_id": "cap19_w0026",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.88
+    },
+    {
+      "window_id": "cap19_w0027",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 6E0 pair6_be: jump of 65535 between consecutive frames, normal max jump 107",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap28_w0000",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap28_w0001",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap28_w0002",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap28_w0003",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0004",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap28_w0005",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0006",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0007",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap28_w0008",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0009",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.18
+    },
+    {
+      "window_id": "cap28_w0010",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap28_w0011",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0012",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap28_w0013",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0014",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.17
+    },
+    {
+      "window_id": "cap28_w0015",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0016",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.24
+    },
+    {
+      "window_id": "cap28_w0017",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap28_w0018",
+      "attack_score": 0.9038,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0019",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.13
+    },
+    {
+      "window_id": "cap28_w0020",
+      "attack_score": 0.8591,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap28_w0021",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.22
+    },
+    {
+      "window_id": "cap28_w0022",
+      "attack_score": 0.9914,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0023",
+      "attack_score": 0.9347,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0024",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap28_w0025",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.11
+    },
+    {
+      "window_id": "cap28_w0026",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.23
+    },
+    {
+      "window_id": "cap28_w0027",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0028",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0029",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap28_w0030",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0031",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0032",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.11
+    },
+    {
+      "window_id": "cap28_w0033",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap28_w0034",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap28_w0035",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.11
+    },
+    {
+      "window_id": "cap28_w0036",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap28_w0037",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0038",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.21
+    },
+    {
+      "window_id": "cap28_w0039",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0040",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap28_w0041",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap28_w0042",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64003 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.88
+    },
+    {
+      "window_id": "cap28_w0043",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.88
+    },
+    {
+      "window_id": "cap28_w0044",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap28_w0045",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap28_w0046",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.87
+    },
+    {
+      "window_id": "cap28_w0047",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap28_w0048",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.83
+    },
+    {
+      "window_id": "cap28_w0049",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 64002 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap28_w0050",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 3.01
+    },
+    {
+      "window_id": "cap28_w0051",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.92
+    },
+    {
+      "window_id": "cap28_w0052",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 3.01
+    },
+    {
+      "window_id": "cap28_w0053",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap28_w0054",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.83
+    },
+    {
+      "window_id": "cap28_w0055",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 3.03
+    },
+    {
+      "window_id": "cap28_w0056",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.93
+    },
+    {
+      "window_id": "cap28_w0057",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.88
+    },
+    {
+      "window_id": "cap28_w0058",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap28_w0059",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63746 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.94
+    },
+    {
+      "window_id": "cap28_w0060",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap28_w0061",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.92
+    },
+    {
+      "window_id": "cap28_w0062",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap28_w0063",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63748 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap28_w0064",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.83
+    },
+    {
+      "window_id": "cap28_w0065",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63748 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap28_w0066",
+      "attack_score": 1.0,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair5_be: jump of 63747 between consecutive frames, normal max jump 98",
+      "model_version": "v2",
+      "latency_ms": 2.45
+    },
+    {
+      "window_id": "cap28_w0067",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.13
+    },
+    {
+      "window_id": "cap28_w0068",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.13
+    },
+    {
+      "window_id": "cap28_w0069",
+      "attack_score": 0.7938,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.19
+    },
+    {
+      "window_id": "cap28_w0070",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0071",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap28_w0072",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0073",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap28_w0074",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.21
+    },
+    {
+      "window_id": "cap28_w0075",
+      "attack_score": 0.1203,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0076",
+      "attack_score": 0.2182,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap28_w0077",
+      "attack_score": 0.7938,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0078",
+      "attack_score": 0.0979,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap28_w0079",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.16
+    },
+    {
+      "window_id": "cap28_w0080",
+      "attack_score": 0.9038,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap28_w0081",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap28_w0082",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0083",
+      "attack_score": 0.9914,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap28_w0084",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.06
+    },
+    {
+      "window_id": "cap28_w0085",
+      "attack_score": 0.9914,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    },
+    {
+      "window_id": "cap28_w0086",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.17
+    },
+    {
+      "window_id": "cap28_w0087",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap42_w0000",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.23
+    },
+    {
+      "window_id": "cap42_w0001",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap42_w0002",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0003",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0004",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.17
+    },
+    {
+      "window_id": "cap42_w0005",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.13
+    },
+    {
+      "window_id": "cap42_w0006",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.17
+    },
+    {
+      "window_id": "cap42_w0007",
+      "attack_score": 0.9038,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.09
+    },
+    {
+      "window_id": "cap42_w0008",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap42_w0009",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap42_w0010",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.11
+    },
+    {
+      "window_id": "cap42_w0011",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap42_w0012",
+      "attack_score": 0.7938,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0013",
+      "attack_score": 0.9347,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap42_w0014",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap42_w0015",
+      "attack_score": 0.999,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 1] Timing anomaly (rate_excess): ID 671: 46.9x normal frame rate",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0016",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.19
+    },
+    {
+      "window_id": "cap42_w0017",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.16
+    },
+    {
+      "window_id": "cap42_w0018",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.23
+    },
+    {
+      "window_id": "cap42_w0019",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.2
+    },
+    {
+      "window_id": "cap42_w0020",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.62
+    },
+    {
+      "window_id": "cap42_w0021",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap42_w0022",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.86
+    },
+    {
+      "window_id": "cap42_w0023",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.94
+    },
+    {
+      "window_id": "cap42_w0024",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.92
+    },
+    {
+      "window_id": "cap42_w0025",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap42_w0026",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap42_w0027",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap42_w0028",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.87
+    },
+    {
+      "window_id": "cap42_w0029",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.95
+    },
+    {
+      "window_id": "cap42_w0030",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap42_w0031",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.89
+    },
+    {
+      "window_id": "cap42_w0032",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.94
+    },
+    {
+      "window_id": "cap42_w0033",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.99
+    },
+    {
+      "window_id": "cap42_w0034",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.98
+    },
+    {
+      "window_id": "cap42_w0035",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap42_w0036",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap42_w0037",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap42_w0038",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap42_w0039",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap42_w0040",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap42_w0041",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.83
+    },
+    {
+      "window_id": "cap42_w0042",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.84
+    },
+    {
+      "window_id": "cap42_w0043",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap42_w0044",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap42_w0045",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.82
+    },
+    {
+      "window_id": "cap42_w0046",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.91
+    },
+    {
+      "window_id": "cap42_w0047",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap42_w0048",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap42_w0049",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.89
+    },
+    {
+      "window_id": "cap42_w0050",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.85
+    },
+    {
+      "window_id": "cap42_w0051",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap42_w0052",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.96
+    },
+    {
+      "window_id": "cap42_w0053",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.96
+    },
+    {
+      "window_id": "cap42_w0054",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.88
+    },
+    {
+      "window_id": "cap42_w0055",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.9
+    },
+    {
+      "window_id": "cap42_w0056",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.89
+    },
+    {
+      "window_id": "cap42_w0057",
+      "attack_score": 0.9991,
+      "threshold": 0.9988083361046447,
+      "decision": "ATTACK",
+      "evidence": "[Stage 2] Payload anomaly (large_jump): ID 0D0 pair2_le: jump of 1544 between consecutive frames, normal max jump 1536",
+      "model_version": "v2",
+      "latency_ms": 2.32
+    },
+    {
+      "window_id": "cap42_w0058",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0059",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0060",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.07
+    },
+    {
+      "window_id": "cap42_w0061",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.2
+    },
+    {
+      "window_id": "cap42_w0062",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.18
+    },
+    {
+      "window_id": "cap42_w0063",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.11
+    },
+    {
+      "window_id": "cap42_w0064",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0065",
+      "attack_score": 0.6014,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0066",
+      "attack_score": 0.7938,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap42_w0067",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.14
+    },
+    {
+      "window_id": "cap42_w0068",
+      "attack_score": 0.9038,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.12
+    },
+    {
+      "window_id": "cap42_w0069",
+      "attack_score": 0.8127,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.08
+    },
+    {
+      "window_id": "cap42_w0070",
+      "attack_score": 0.8643,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 1] No timing anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.1
+    },
+    {
+      "window_id": "cap42_w0071",
+      "attack_score": 0.6134,
+      "threshold": 0.9988083361046447,
+      "decision": "ACCEPT",
+      "evidence": "[Stage 2] No payload anomaly beyond normal training range",
+      "model_version": "v2",
+      "latency_ms": 2.15
+    }
+  ],
+  "meta": {
+    "captureId": "cap19",
+    "captures": [
+      "cap19",
+      "cap28",
+      "cap42"
+    ],
+    "modelVersion": "v2",
+    "threshold": 0.9988083361046447,
+    "source": "real ROAD development captures, real v2 Defender inference (build_real_run.py) -- not mock data"
+  }
+}

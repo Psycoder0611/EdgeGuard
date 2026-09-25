@@ -118,11 +118,12 @@ def _only_watched(stats, watch):
                  for part in stats)
 
 
-def fit_models(names, windows, stats, watch, frozen_mode):
+def fit_models(names, windows, stats, watch, frozen_mode, bound_percentile=None):
     """Stage 1 and Stage 2 fitted on the named captures only."""
     train = [w for n in names for w in windows[n]]
     stage1 = Stage1Model().fit(train)
-    stage2 = Stage2Model(watch_ids=watch, frozen_mode=frozen_mode).fit(
+    stage2 = Stage2Model(watch_ids=watch, frozen_mode=frozen_mode,
+                         bound_percentile=bound_percentile).fit(
         train, range_stats=[_only_watched(stats[n], watch) for n in names])
     return stage1, stage2
 
@@ -141,7 +142,7 @@ def score_both(stage1, stage2, windows) -> Dict[str, List[float]]:
 # Protocol 1: leave-one-capture-out over normal drives
 # ---------------------------------------------------------------------
 def ambient_loco(names, windows, stats, max_false_alarm_rate, watch, frozen_mode="width",
-                 window_s=1.0, log=print) -> dict:
+                 bound_percentile=None, window_s=1.0, log=print) -> dict:
     """Nested LOCO: out-of-fold threshold on the rest, false alarms on the held-out one."""
     if len(names) < 3:
         raise ValueError(f"leave-one-out needs at least 3 captures, got {len(names)}")
@@ -151,11 +152,11 @@ def ambient_loco(names, windows, stats, max_false_alarm_rate, watch, frozen_mode
         oof = {v: [] for v in VERSIONS}
         for inner_out in rest:
             models = fit_models([n for n in rest if n != inner_out], windows, stats,
-                                watch, frozen_mode)
+                                watch, frozen_mode, bound_percentile)
             for v, s in score_both(*models, windows[inner_out]).items():
                 oof[v].extend(s)
         thresholds = {v: choose_threshold(oof[v], max_false_alarm_rate) for v in VERSIONS}
-        scores = score_both(*fit_models(rest, windows, stats, watch, frozen_mode),
+        scores = score_both(*fit_models(rest, windows, stats, watch, frozen_mode, bound_percentile),
                             windows[held_out])
         row = {"capture_id": windows[held_out][0].capture_id if windows[held_out] else None,
                "windows": len(windows[held_out])}
@@ -193,7 +194,7 @@ def fold_watch_ids(road: RoadData, train_attacks) -> List[str]:
 
 
 def attack_cv(road: RoadData, max_false_alarm_rate, max_windows, frozen_mode="width",
-              log=print) -> dict:
+              bound_percentile=None, log=print) -> dict:
     folds = road.manifest.development_folds()
     if len(folds) < 2:
         raise ValueError(f"attack CV needs at least 2 development folds, got {sorted(folds)}")
@@ -209,7 +210,8 @@ def attack_cv(road: RoadData, max_false_alarm_rate, max_windows, frozen_mode="wi
 
     fold_rows, capture_rows = [], []
     for k, held_out in folds.items():
-        stage1, stage2 = fit_models(train_names, windows, stats, watches[k], frozen_mode)
+        stage1, stage2 = fit_models(train_names, windows, stats, watches[k], frozen_mode,
+                                    bound_percentile)
         val_scores = score_both(stage1, stage2, validation)
         thresholds = {v: choose_threshold(val_scores[v], max_false_alarm_rate) for v in VERSIONS}
         fold_rows.append({"fold": k, "watch_ids": watches[k], "held_out": len(held_out),
@@ -278,6 +280,9 @@ def main(argv=None) -> int:
     parser.add_argument("--stage2-watch", default=",".join(DEVELOPMENT_WATCH_IDS),
                         help='ambient protocol only: watch-list, e.g. "0D0,6E0", or "all"')
     parser.add_argument("--frozen-mode", default="width", choices=("width", "rate"))
+    parser.add_argument("--bound-percentile", type=float, default=None,
+                        help="Stage 2 out-of-range bounds as a percentile, e.g. 1.0 to "
+                             "trim the extreme 1%% off each side (default: strict min/max)")
     parser.add_argument("--out", help="JSON report path (default results/crossval_<protocol>.json)")
     args = parser.parse_args(argv)
     if args.max_windows_per_capture < 1:
@@ -287,7 +292,8 @@ def main(argv=None) -> int:
     settings = {"manifest": str(args.manifest), "window_s": args.window_s,
                 "max_windows_per_capture": args.max_windows_per_capture,
                 "max_false_alarm_rate": args.max_false_alarm_rate,
-                "frozen_mode": args.frozen_mode}
+                "frozen_mode": args.frozen_mode,
+                "bound_percentile": args.bound_percentile}
 
     if args.protocol == "ambient":
         watch = None if args.stage2_watch.strip().lower() == "all" else \
@@ -298,11 +304,11 @@ def main(argv=None) -> int:
         print(f"Leave-one-capture-out ({len(names)} outer folds, "
               f"{len(names) * (len(names) - 1)} inner fits):")
         report = ambient_loco(names, windows, stats, args.max_false_alarm_rate, watch,
-                              args.frozen_mode, args.window_s)
+                              args.frozen_mode, args.bound_percentile, args.window_s)
         settings["stage2_watch_ids"] = watch
     else:
         report = attack_cv(road, args.max_false_alarm_rate, args.max_windows_per_capture,
-                           args.frozen_mode)
+                           args.frozen_mode, args.bound_percentile)
 
     report = {"settings": settings, **report,
               "note": "Procedure-level estimate: each fold has its own models and threshold. "

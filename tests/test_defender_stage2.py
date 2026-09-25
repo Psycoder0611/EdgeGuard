@@ -360,3 +360,108 @@ def test_frozen_mode_saved_and_old_files_default_to_width(tmp_path):
 def test_rejects_unknown_frozen_mode():
     with pytest.raises(ValueError, match="frozen_mode"):
         Stage2Model(frozen_mode="magic")
+
+# ---------------------------------------------------------------------
+# bound_percentile: percentile out-of-range bounds instead of strict min/max
+# ---------------------------------------------------------------------
+def _percentile_window(index: int, byte0_values):
+    """MOCK window: 0D0 byte0 takes exactly these values, one frame each."""
+    start = 1000.0 + index
+    frames = [{"timestamp": round(start + 0.01 + k * 0.02, 6), "can_id": "0D0",
+              "payload": f"{v:02X}00000000000000"} for k, v in enumerate(byte0_values)]
+    return TrafficWindow(window_id=f"cap01_w{index:04d}", capture_id="cap01",
+                         window_start=start, window_end=start + 1.0, frames=frames)
+
+
+def _percentile_training_windows():
+    """19 windows with byte0 spread over roughly [10, 90], plus ONE window
+    with a single spurious frame at 250 -- a rare-but-normal extreme that
+    would otherwise widen the learned range far past where byte0 usually is."""
+    normal = [_percentile_window(i, [10 + (i * 7 + k * 3) % 81 for k in range(5)])
+             for i in range(19)]
+    outlier = _percentile_window(19, [10, 20, 250, 30, 40])
+    return normal + [outlier]
+
+
+def test_bound_percentile_none_keeps_the_full_training_range():
+    model = Stage2Model(watch_ids=["0D0"], bound_percentile=None).fit(
+        _percentile_training_windows())
+    assert model.field_range["0D0|byte0"] == (10, 250)
+    assert model.field_bounds["0D0|byte0"] == (10.0, 250.0)
+
+
+def test_bound_percentile_narrows_out_of_range_bounds_but_not_field_range():
+    train = _percentile_training_windows()
+    model = Stage2Model(watch_ids=["0D0"], bound_percentile=10.0).fit(train)
+    # field_range (used by frozen_break) is UNCHANGED: still the true min/max.
+    assert model.field_range["0D0|byte0"] == (10, 250)
+    # field_bounds (used by out_of_range) is narrowed away from the outlier.
+    assert model.field_bounds["0D0|byte0"] == pytest.approx((17.9, 78.1))
+
+
+def test_bound_percentile_flags_a_value_the_full_range_would_accept():
+    train = _percentile_training_windows()
+    no_percentile = Stage2Model(watch_ids=["0D0"], bound_percentile=None).fit(train)
+    p10 = Stage2Model(watch_ids=["0D0"], bound_percentile=10.0).fit(train)
+    probe = _percentile_window(100, [150])   # inside [10,250], outside [17.9,78.1]
+
+    assert no_percentile.score(probe).sub_scores["out_of_range"] == 0.0
+    assert p10.score(probe).sub_scores["out_of_range"] == pytest.approx(0.9047619047619048)
+
+
+def test_bound_percentile_does_not_change_frozen_break_strength():
+    """frozen_break's strength uses the FULL training width, never the
+    percentile-narrowed bounds -- a change aimed at out_of_range must not
+    make frozen_break more sensitive as a side effect."""
+    train = _percentile_training_windows()
+    no_percentile = Stage2Model(watch_ids=["0D0"], bound_percentile=None).fit(train)
+    p10 = Stage2Model(watch_ids=["0D0"], bound_percentile=10.0).fit(train)
+    frozen_probe = _percentile_window(101, [42] * 5)
+
+    assert (no_percentile.score(frozen_probe).sub_scores["frozen_break"]
+           == p10.score(frozen_probe).sub_scores["frozen_break"])
+
+
+@pytest.mark.parametrize("bad", [0, 50, -1, 51, 100])
+def test_rejects_out_of_bounds_bound_percentile(bad):
+    with pytest.raises(ValueError, match="bound_percentile"):
+        Stage2Model(bound_percentile=bad)
+
+
+def test_bound_percentile_saved_and_old_files_default_to_none(tmp_path):
+    import json as _json
+    train = _percentile_training_windows()
+    model = Stage2Model(watch_ids=["0D0"], bound_percentile=10.0).fit(train)
+    model.save(tmp_path / "s2.json", "v4")
+
+    loaded = Stage2Model.load(tmp_path / "s2.json", "v4")
+    assert loaded.bound_percentile == 10.0
+    assert loaded.field_bounds == model.field_bounds
+
+    record = _json.loads((tmp_path / "s2.json").read_text(encoding="utf-8"))
+    del record["bound_percentile"]
+    del record["field_bounds"]
+    (tmp_path / "old.json").write_text(_json.dumps(record), encoding="utf-8")
+    old_loaded = Stage2Model.load(tmp_path / "old.json", "v4")
+    assert old_loaded.bound_percentile is None
+    assert old_loaded.field_bounds == old_loaded.field_range
+
+
+def test_capture_range_stats_and_merge_keep_raw_values_sorted():
+    """capture_range_stats() sorts per capture; merge_range_stats() must keep
+    the merge sorted (k-way merge), since fit() relies on that ordering for
+    percentile bounds without re-sorting the whole thing every fit."""
+    from defender.stage2 import merge_range_stats
+
+    model = Stage2Model(watch_ids=["0D0"])
+    capture_a = [(float(i), "0D0", f"{v:02X}00000000000000")
+                for i, v in enumerate([50, 10, 90, 30])]
+    capture_b = [(float(i), "0D0", f"{v:02X}00000000000000")
+                for i, v in enumerate([20, 80, 5])]
+    stats_a = model.capture_range_stats(capture_a)
+    stats_b = model.capture_range_stats(capture_b)
+    assert stats_a[3]["0D0|byte0"] == sorted(stats_a[3]["0D0|byte0"])
+
+    merged = merge_range_stats([stats_a, stats_b])
+    assert merged[3]["0D0|byte0"] == sorted(merged[3]["0D0|byte0"])
+    assert merged[3]["0D0|byte0"] == sorted(stats_a[3]["0D0|byte0"] + stats_b[3]["0D0|byte0"])

@@ -105,3 +105,32 @@ def test_harden_v3_leaves_v1_and_v2_untouched(fake_road):
     assert before == after
     record = info(fake_road, "v3")
     assert record["stage2_frozen_mode"] == "rate" and record["base_stage1_version"] == "v1"
+
+
+def test_harden_v4_leaves_v1_and_v2_untouched(fake_road):
+    run(fake_road)
+    models = fake_road.data_dir.parent / "models"
+    before = {p.name: p.read_text(encoding="utf-8") for p in models.glob("*_v[12].json")}
+    assert run(fake_road, "--harden-v4", "--bound-percentile", "10") == 0
+    after = {p.name: p.read_text(encoding="utf-8") for p in models.glob("*_v[12].json")}
+    assert before == after
+    record = info(fake_road, "v4")
+    assert record["stage2_frozen_mode"] == "width" and record["base_stage1_version"] == "v1"
+    assert record["stage2_bound_percentile"] == 10.0
+
+
+def test_harden_v4_requires_bound_percentile(fake_road):
+    run(fake_road)
+    with pytest.raises(SystemExit):
+        run(fake_road, "--harden-v4")
+
+
+def test_harden_v3_and_v4_are_mutually_exclusive(fake_road):
+    run(fake_road)
+    with pytest.raises(SystemExit):
+        run(fake_road, "--harden-v3", "--harden-v4", "--bound-percentile", "10")
+
+
+def test_v2_bound_percentile_defaults_to_none(fake_road):
+    run(fake_road)
+    assert info(fake_road, "v2")["stage2_bound_percentile"] is None

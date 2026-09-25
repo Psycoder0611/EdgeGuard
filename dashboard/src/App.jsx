@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Header from "./components/Header";
 import ReplayStatus from "./components/ReplayStatus";
 import ScoreGauge from "./components/ScoreGauge";
@@ -7,24 +7,59 @@ import ArchitectureDiagram from "./components/ArchitectureDiagram";
 import CarsView from "./components/CarsView";
 import { CanIdPanel, SimulatedResponsePanel, RoutingPanel } from "./components/DetailPanels";
 import { buildMockRun, CAPTURE_META } from "./data/mockRun";
+import { connectLiveFeed } from "./data/liveFeed";
 import { useReplay } from "./utils/useReplay";
 import "./App.css";
 
-const DATA_SOURCE = "mock"; // flip to "live" once connectLiveFeed() (data/liveFeed.js) is wired up
+const DATA_SOURCE = "live"; // "mock" (data/mockRun.js) or "live" (data/liveFeed.js, real v2 Defender output)
 const TABS = [
   { id: "kpi", label: "KPIs" },
   { id: "cars", label: "Fleet view" },
 ];
 
 export default function App() {
-  const run = useMemo(() => buildMockRun(240), []);
+  const mockRun = useMemo(() => buildMockRun(240), []);
+  const [live, setLive] = useState({ status: DATA_SOURCE === "live" ? "loading" : "idle" });
+
+  useEffect(() => {
+    if (DATA_SOURCE !== "live") return;
+    let cancelled = false;
+    connectLiveFeed()
+      .then(({ run, meta }) => {
+        if (!cancelled) setLive({ status: "ready", run, meta });
+      })
+      .catch((error) => {
+        if (!cancelled) setLive({ status: "error", error });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const run = DATA_SOURCE === "live" ? live.run ?? [] : mockRun;
+  const meta = DATA_SOURCE === "live" ? live.meta ?? CAPTURE_META : CAPTURE_META;
   const replay = useReplay(run, { intervalMs: 300 });
   const [attackAction, setAttackAction] = useState("SIMULATED_ALERT");
   const [tab, setTab] = useState("kpi");
 
+  if (DATA_SOURCE === "live" && live.status !== "ready") {
+    return (
+      <div className="app-shell">
+        <Header modelVersion="–" dataSource={DATA_SOURCE} />
+        <main className="dashboard-grid dashboard-grid-single">
+          <p className="hint" role="status">
+            {live.status === "error"
+              ? `Could not load the real feed: ${live.error.message}`
+              : "Loading real Defender output…"}
+          </p>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
-      <Header modelVersion={CAPTURE_META.modelVersion} dataSource={DATA_SOURCE} />
+      <Header modelVersion={meta.modelVersion} dataSource={DATA_SOURCE} />
 
       <ArchitectureDiagram output={replay.current} attackAction={attackAction} />
 
@@ -45,7 +80,7 @@ export default function App() {
       {tab === "kpi" && (
         <main className="dashboard-grid">
           <ReplayStatus
-            captureId={CAPTURE_META.captureId}
+            captureId={meta.captureId}
             index={replay.index}
             total={replay.total}
             isPlaying={replay.isPlaying}
@@ -76,7 +111,7 @@ export default function App() {
         <main className="dashboard-grid dashboard-grid-single">
           <CarsView output={replay.current} attackAction={attackAction} />
           <ReplayStatus
-            captureId={CAPTURE_META.captureId}
+            captureId={meta.captureId}
             index={replay.index}
             total={replay.total}
             isPlaying={replay.isPlaying}

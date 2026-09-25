@@ -35,6 +35,28 @@ defender.stage1._unusualness): compared against the same checks run on
 every normal training window. The Stage 2 score is the highest sub-score
 found on any field.
 
+OUT-OF-RANGE BOUNDS (bound_percentile):
+    None (v1/v2/v3, default)  out_of_range compares against the exact
+             min/max ever seen in normal training. A single rare-but-normal
+             extreme value (e.g. one drive's brief spike) becomes part of
+             the "normal" range forever, which is safe but means one odd
+             training drive can also make the bound too WIDE to catch a
+             real attack that stays inside it.
+    a number 0 < p < 50   out_of_range instead compares against the p-th and
+             (100-p)-th percentile of the values seen at each field CHANGE
+             during training (not frame-weighted -- see fit()'s docstring),
+             so the most extreme observed values no longer define the
+             boundary. This directly targets false alarms coming from one
+             unusual training drive (e.g. "extended_short" in leave-one-out
+             cross-validation) at the cost of maybe missing an attack whose
+             values fall inside the trimmed tail. Choose p by comparing
+             `python -m defender.crossval ambient` false-alarm rates with
+             and without it -- never by looking at final_test.
+             Only out_of_range is affected: frozen_break's "width" strength
+             and large_jump's baseline still use the full training range,
+             so this cannot make those checks MORE sensitive as a side
+             effect of a change aimed only at out_of_range.
+
 FROZEN CHECK MODES (frozen_mode):
     "width"  (v2, default)  strength = the field's normal range width.
              Weakness found by Part 3 on real data: normal windows already
@@ -61,6 +83,7 @@ KNOWN LIMITS (expected, not bugs):
     noisy field does not hide a real anomaly elsewhere.
 """
 
+import heapq
 import json
 import math
 from collections import defaultdict
@@ -136,30 +159,66 @@ def _field_values(window: TrafficWindow, only_ids=None) -> Dict[Tuple[str, str],
 FROZEN_MODES = ("width", "rate")
 
 
-RangeStats = Tuple[Dict[str, int], Dict[str, int], Dict[str, int]]   # low, high, max_jump
+# low, high, max_jump, raw_values (values seen at each field change, for
+# percentile out-of-range bounds -- see bound_percentile above)
+RangeStats = Tuple[Dict[str, int], Dict[str, int], Dict[str, int], Dict[str, List[int]]]
 
 
 def merge_range_stats(stats: Iterable[RangeStats]) -> RangeStats:
-    """Combine per-capture (low, high, max_jump) into one: min, max, max."""
+    """Combine per-capture (low, high, max_jump, raw_values) into one:
+    min, max, max, and a SORTED merge (each capture's raw_values arrives
+    pre-sorted from capture_range_stats(), so this is an O(n log k) k-way
+    merge across k captures, not an O(n log n) re-sort of everything --
+    matters when this runs inside cross-validation's nested refits)."""
     low: Dict[str, int] = {}
     high: Dict[str, int] = {}
     jump: Dict[str, int] = {}
-    for lo, hi, ju in stats:
+    raw_lists: Dict[str, List[List[int]]] = defaultdict(list)
+    for lo, hi, ju, rv in stats:
         for k, v in lo.items():
             low[k] = min(low.get(k, v), v)
         for k, v in hi.items():
             high[k] = max(high.get(k, v), v)
         for k, v in ju.items():
             jump[k] = max(jump.get(k, v), v)
-    return low, high, jump
+        for k, values in rv.items():
+            raw_lists[k].append(values)
+    raw_values = {k: list(heapq.merge(*lists)) for k, lists in raw_lists.items()}
+    return low, high, jump, raw_values
+
+
+def _percentile(sorted_values: List[float], pct: float) -> float:
+    """Linear-interpolation percentile of an already-sorted, non-empty list."""
+    if not sorted_values:
+        raise ValueError("cannot take a percentile of an empty list")
+    if len(sorted_values) == 1:
+        return float(sorted_values[0])
+    rank = (pct / 100.0) * (len(sorted_values) - 1)
+    lo_idx, hi_idx = math.floor(rank), math.ceil(rank)
+    if lo_idx == hi_idx:
+        return float(sorted_values[lo_idx])
+    frac = rank - lo_idx
+    return sorted_values[lo_idx] + (sorted_values[hi_idx] - sorted_values[lo_idx]) * frac
+
+
+def _percentile_bounds(sorted_values: List[float], bound_percentile: float) -> Tuple[float, float]:
+    return (_percentile(sorted_values, bound_percentile),
+            _percentile(sorted_values, 100.0 - bound_percentile))
 
 
 class Stage2Model:
     def __init__(self, watch_ids: Optional[Iterable[str]] = None,
-                 frozen_mode: str = "width"):
+                 frozen_mode: str = "width",
+                 bound_percentile: Optional[float] = None):
         if frozen_mode not in FROZEN_MODES:
             raise ValueError(f"frozen_mode must be one of {FROZEN_MODES}, got {frozen_mode!r}")
+        if bound_percentile is not None and not (0 < bound_percentile < 50):
+            raise ValueError(
+                f"bound_percentile must be between 0 and 50 (exclusive), e.g. 1.0 to trim "
+                f"the extreme 1% off each side, got {bound_percentile!r}"
+            )
         self.frozen_mode = frozen_mode
+        self.bound_percentile = bound_percentile
         # "ID|field" -> [windows where constant, windows with >= 2 values]
         self.frozen_counts: Dict[str, List[int]] = {}
         if watch_ids is not None:
@@ -170,7 +229,10 @@ class Stage2Model:
         else:
             self.watch_ids = None
         self.fitted = False
-        self.field_range: Dict[str, Tuple[int, int]] = {}    # "ID|field" -> (min, max)
+        self.field_range: Dict[str, Tuple[int, int]] = {}    # "ID|field" -> (min, max), always full range
+        # out_of_range bounds actually used for scoring: == field_range unless
+        # bound_percentile narrows it (see fit()).
+        self.field_bounds: Dict[str, Tuple[float, float]] = {}
         self.field_max_jump: Dict[str, int] = {}
         self.reference: Dict[str, List[float]] = {}          # sorted raw values per check
         self.training_windows = 0
@@ -184,16 +246,21 @@ class Stage2Model:
 
     # ---------- training ----------------------------------------------
     def capture_range_stats(self, capture: Iterable[Tuple[float, str, str]]) -> RangeStats:
-        """Field ranges and largest jumps of ONE full capture (watched IDs only).
+        """Field ranges, largest jumps, and raw changed-values of ONE full
+        capture (watched IDs only).
 
-        Returns (low, high, max_jump), three dicts keyed "ID|field". Stats of
-        several captures combine exactly by min / max / max (merge_range_stats),
-        so cross-validation can read each capture once and reuse the result in
-        every fold instead of re-reading the logs per fold.
+        Returns (low, high, max_jump, raw_values), keyed "ID|field". Stats of
+        several captures combine exactly by min / max / max / concatenate
+        (merge_range_stats), so cross-validation can read each capture once
+        and reuse the result in every fold instead of re-reading the logs per
+        fold. raw_values is always collected (cheap: the watch-list is small)
+        so a Stage2Model can be fit with any bound_percentile from the same
+        stats without re-reading the logs.
         """
         low: Dict[str, int] = {}
         high: Dict[str, int] = {}
         max_jump: Dict[str, int] = defaultdict(int)
+        raw_values: Dict[str, List[int]] = defaultdict(list)
         last_payload: Dict[str, str] = {}
         last_value: Dict[str, int] = {}
         for _, can_id, payload in capture:
@@ -209,6 +276,7 @@ class Stage2Model:
                 if previous == value:
                     continue      # this field did not change
                 last_value[key] = value
+                raw_values[key].append(value)
                 if previous is None:
                     if key not in low or value < low[key]:
                         low[key] = value
@@ -222,7 +290,9 @@ class Stage2Model:
                 jump = value - previous if value > previous else previous - value
                 if jump > max_jump[key]:
                     max_jump[key] = jump
-        return low, high, dict(max_jump)
+        # Sorted once here (per capture) so merge_range_stats can k-way-merge
+        # instead of re-sorting the concatenation on every fit() call.
+        return low, high, dict(max_jump), {k: sorted(v) for k, v in raw_values.items()}
 
     def fit(self, normal_windows: List[TrafficWindow],
             range_captures: Optional[Iterable[Iterable[Tuple[float, str, str]]]] = None,
@@ -240,6 +310,14 @@ class Stage2Model:
         range_stats: optional, instead of range_captures. Precomputed
             capture_range_stats() of the SAME training captures, from a
             Stage2Model with the SAME watch-list. Gives an identical model.
+
+        NOTE on bound_percentile: the percentile is computed over the values
+        seen at each field CHANGE (the same de-duplicated sequence
+        capture_range_stats() and _field_values() already track for jumps),
+        not over every frame weighted by how long it held that value. This is
+        a deliberate simplification, not a frame-weighted percentile -- rare
+        brief extremes still appear once in the sample, which is what
+        out-of-range trimming cares about.
         """
         if not isinstance(normal_windows, (list, tuple)) or len(normal_windows) < 2:
             raise ValueError("fit() needs a list of at least 2 normal training windows")
@@ -254,6 +332,7 @@ class Stage2Model:
         low: Dict[str, int] = {}
         high: Dict[str, int] = {}
         max_jump: Dict[str, int] = defaultdict(int)
+        raw_values: Dict[str, List[int]] = defaultdict(list)
 
         def update(key, values):
             low[key] = min(low.get(key, values[0]), min(values))
@@ -261,6 +340,7 @@ class Stage2Model:
             for a, b in zip(values, values[1:]):
                 if abs(b - a) > max_jump[key]:
                     max_jump[key] = abs(b - a)
+            raw_values[key].extend(values)
 
         if range_captures is not None:
             range_stats = [self.capture_range_stats(c) for c in range_captures]
@@ -274,6 +354,8 @@ class Stage2Model:
             low.update(merged[0])
             high.update(merged[1])
             max_jump.update(merged[2])
+            for k, values in merged[3].items():
+                raw_values[k].extend(values)
             # Windows come from the same captures, but include them too so no
             # field seen in calibration is missing a range.
             for window in normal_windows:
@@ -283,6 +365,15 @@ class Stage2Model:
 
         self.field_range = {k: (low[k], high[k]) for k in low}
         self.field_max_jump = dict(max_jump)
+        if self.bound_percentile is not None:
+            self.field_bounds = {
+                k: _percentile_bounds(sorted(values), self.bound_percentile)
+                for k, values in raw_values.items() if values
+            }
+            for k in low:
+                self.field_bounds.setdefault(k, (float(low[k]), float(high[k])))
+        else:
+            self.field_bounds = {k: (float(low[k]), float(high[k])) for k in low}
 
         # How often is each field constant within a normal training window?
         counts: Dict[str, List[int]] = defaultdict(lambda: [0, 0])
@@ -318,21 +409,27 @@ class Stage2Model:
             key = self._key(can_id, field_name)
             if key not in self.field_range:
                 continue    # unseen field: covered by Stage 1's unknown_ids, not here
-            low, high = self.field_range[key]
-            width = high - low
+            low, high = self.field_range[key]            # full training range
+            width = high - low                            # used by frozen_break only
+            bound_low, bound_high = self.field_bounds.get(key, (low, high))
+            bound_width = bound_high - bound_low          # used by out_of_range only
 
-            # 1. out_of_range
-            overage = max((low - v if v < low else v - high if v > high else 0) for v in values)
+            # 1. out_of_range (percentile-trimmed bounds when bound_percentile is set)
+            overage = max((bound_low - v if v < bound_low else v - bound_high if v > bound_high else 0)
+                          for v in values)
             if overage > 0:
-                ratio = overage / (width if width > 0 else 1)
+                ratio = overage / (bound_width if bound_width > 0 else 1)
                 if ratio > raw["out_of_range"]:
                     raw["out_of_range"] = ratio
+                    note = "" if self.bound_percentile is None else                         f" (training range [{low}, {high}])"
                     evidence["out_of_range"] = (
                         f"ID {can_id} {field_name}: value out of normal range "
-                        f"[{low}, {high}] by {overage}"
+                        f"[{bound_low}, {bound_high}] by {overage}{note}"
                     )
 
-            # 2. frozen_break: held constant for the whole window
+            # 2. frozen_break: held constant for the whole window (always the
+            # FULL training width/rate -- never narrowed by bound_percentile,
+            # which is aimed only at out_of_range)
             if len(values) >= 2 and min(values) == max(values):
                 if self.frozen_mode == "width":
                     if width > 0 and width > raw["frozen_break"]:
@@ -393,8 +490,10 @@ class Stage2Model:
             "model_version": model_version,
             "watch_ids": self.watch_ids,
             "frozen_mode": self.frozen_mode,
+            "bound_percentile": self.bound_percentile,
             "frozen_counts": self.frozen_counts,
             "field_range": self.field_range,
+            "field_bounds": self.field_bounds,
             "field_max_jump": self.field_max_jump,
             "reference": self.reference,
             "training_windows": self.training_windows,
@@ -415,9 +514,13 @@ class Stage2Model:
                 f"expected {expected_model_version!r}"
             )
         model = cls(watch_ids=record.get("watch_ids"),
-                    frozen_mode=record.get("frozen_mode", "width"))
+                    frozen_mode=record.get("frozen_mode", "width"),
+                    bound_percentile=record.get("bound_percentile"))
         model.frozen_counts = record.get("frozen_counts", {})
         model.field_range = {k: tuple(v) for k, v in record["field_range"].items()}
+        # Old model files (no field_bounds) predate percentile bounds: bounds == range.
+        model.field_bounds = {k: tuple(v) for k, v in
+                              record.get("field_bounds", record["field_range"]).items()}
         model.field_max_jump = record["field_max_jump"]
         model.reference = record["reference"]
         model.training_windows = record["training_windows"]

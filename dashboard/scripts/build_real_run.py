@@ -1,0 +1,100 @@
+"""
+Builds dashboard/src/data/realRun.json: a real EdgeGuard v2 Defender replay
+for the dashboard's "live" data source (see dashboard/src/data/liveFeed.js
+and README.md's "Connecting the real feed").
+
+This is REAL ROAD data, REAL v2 inference, REAL evidence text and REAL
+per-window latency -- not synthetic mock data. It concatenates three real
+DEVELOPMENT attack captures (never final_test/separate) in their own
+chronological order, one after another, purely to give the demo replay a
+few distinct attack bursts the way defender/dev_check.py's own numbers show
+they naturally occur (each capture already mixes normal driving with an
+injected attack in the middle). No ground-truth label is written to the
+JSON: shared/schemas.py's DefenderOutput has no label field, and the
+dashboard is meant to show only what the Defender itself would output in
+real deployment, never an oracle answer.
+
+Usage (from the EdgeGuard repo root):
+    python -m dashboard.scripts.build_real_run --data-dir ~/Downloads/road
+"""
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+# Run from the repo root; add it to sys.path so `defender`/`part1` import
+# whether this is invoked as -m or as a plain script.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from defender.defender import Defender
+from part1.pipeline import RoadData
+from part1.split_manifest import MANIFEST_PATH, load_manifest
+
+# Real development captures, in the order they'll play. Each already mixes
+# normal driving with one injected attack burst (see defender/dev_check.py's
+# own real-data numbers: 22/6, 25/63, 38/34 attacked/normal windows).
+CAPTURES = [
+    "correlated_signal_attack_2",
+    "max_speedometer_attack_1",
+    "reverse_light_on_attack_2",
+]
+MODEL_VERSION = "v2"
+
+
+def build(data_dir, manifest_path, model_dir):
+    defender = Defender.load(model_dir, MODEL_VERSION)
+    road = RoadData(data_dir, manifest=load_manifest(manifest_path), window_s=defender.window_s or 1.0)
+
+    names = road.manifest.names("development")
+    missing = [c for c in CAPTURES if c not in names]
+    if missing:
+        raise ValueError(f"not development captures per the manifest: {missing}")
+
+    run = []
+    for name in CAPTURES:
+        for window, _label in road.labelled_windows(name):
+            output = defender.score_window(window)
+            run.append({
+                "window_id": output.window_id,
+                "attack_score": round(output.attack_score, 4),
+                "threshold": output.threshold,
+                "decision": output.decision,
+                "evidence": output.evidence,
+                "model_version": output.model_version,
+                "latency_ms": round(output.latency_ms, 2),
+            })
+
+    meta = {
+        "captureId": road.capture_id(CAPTURES[0]),
+        "captures": [road.capture_id(c) for c in CAPTURES],
+        "modelVersion": MODEL_VERSION,
+        "threshold": defender.threshold,
+        "source": "real ROAD development captures, real v2 Defender inference "
+                  "(build_real_run.py) -- not mock data",
+    }
+    return run, meta
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--data-dir", default="data/road")
+    parser.add_argument("--manifest", default=str(MANIFEST_PATH))
+    parser.add_argument("--model-dir", default="models")
+    parser.add_argument("--out", default="dashboard/src/data/realRun.json")
+    args = parser.parse_args(argv)
+
+    run, meta = build(args.data_dir, args.manifest, args.model_dir)
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps({"run": run, "meta": meta}, indent=2), encoding="utf-8")
+
+    attacked = sum(1 for r in run if r["decision"] == "ATTACK")
+    print(f"Wrote {len(run)} real windows ({attacked} flagged ATTACK) from "
+         f"{', '.join(CAPTURES)} to {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

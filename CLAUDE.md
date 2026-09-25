@@ -107,8 +107,22 @@ Everyone gets data through **`part1.pipeline.RoadData`**: `windows()`, `labelled
 - **v1 and v2 were retrained** on the manifest (`models/*_v1.json`, `*_v2.json` overwritten; they had never been final-evaluated).
 - `nano_runner.py`: latency benchmark, mock traffic **or real ROAD windows** (`--model-version`, see the Commands table).
 
-### Dashboard (`dashboard/`): mock data only
-React + Vite, KPI tab, live architecture diagram, fleet view. Reads mock `DefenderOutput` records; it isn't connected to the real Defender yet.
+### Dashboard (`dashboard/`): wired to real v2 Defender output, 2026-09-24
+React + Vite, KPI tab, live architecture diagram, fleet view. `DATA_SOURCE = "live"`
+(`dashboard/src/App.jsx`) by default: `dashboard/scripts/build_real_run.py` scores three real
+ROAD development captures end to end with the real trained v2 Defender and writes
+`dashboard/src/data/realRun.json` (188 windows, 86 flagged ATTACK, real evidence text and
+latency, no ground truth) -- see `dashboard/README.md`'s "Data sources" section. This is a
+REPLAY of a precomputed run, not a live socket to a running Nano; there is still no live
+streaming inference process anywhere in this repo. The mock generator is kept as a fallback
+(`DATA_SOURCE = "mock"`).
+
+**Found and fixed in the same pass:** the root `.gitignore`'s bare `data/` pattern (meant only
+to keep the real ROAD dataset out of git) also matched `dashboard/src/data/`, so
+`mockRun.js`/`schema.js` had **never actually been committed** -- they existed on disk but
+were absent from every commit in `git log`. Fixed by anchoring the pattern to `/data/` (repo
+root only); both files are now tracked for the first time, alongside the new `liveFeed.js`/
+`realRun.json`/`build_real_run.py`.
 
 ### Part 3 (`part3/`): red team attacker + injector, both attack families
 Ported forward from the unmerged `part3-red-team` branch (`fb98314`), which had drifted too
@@ -139,6 +153,33 @@ v2 from ACCEPT (score 0.96) to ATTACK (score 0.999, `out_of_range` evidence).
   investigated -- these are generic Red Team proposals, not targeted at the `0D0`/`6E0`
   watch-list, so this is a rougher, broader test than the hand-targeted example above, closer
   to a stress test than a calibrated benchmark.
+
+### Stage 2 hardening attempts (v3, bound_percentile): two tried, neither fixes the known gaps
+- **v3** (`--harden-v3`, "rate" frozen check) was already coded before this session; trained and
+  dev-checked on real data for the first time here. Result: **byte-identical to v2** on every
+  development capture (247/390 detected, 1/237 false alarms) -- reverse_light_off/on are still
+  0/8 and 0/21 detected. The Part 3 freeze repro's frozen score rises slightly (0.983 vs v2's
+  0.959) but not past v3's own threshold (0.999), so the decision doesn't change either.
+  **"Rate" mode does not fix the reverse-light gap.** That needs actual decoded-signal (bit-level)
+  checking (`part1/decode.py` exists and is tested, but nothing calls `preprocess(window, Decoder)`
+  before scoring yet) -- still open, not built this session.
+- **bound_percentile** (`Stage2Model(bound_percentile=...)`, `--harden-v4` / `--bound-percentile`
+  on `run_training`/`crossval`): a NEW option, this session -- out-of-range bounds become the
+  p-th/(100-p)-th percentile of training values instead of strict min/max, leaving frozen_break
+  and large_jump untouched. Backward compatible (old v1/v2/v3 model files load unchanged; 19 new
+  tests, 500 total passing). **A targeted check against `ambient_dyno_drive_extended_short`** (the
+  known worst leave-one-out drive, 29/90 false alarms per the table below) **found it does not
+  help -- false alarms stayed at 29-30/90 across percentiles 0.1 to 5.0, slightly WORSE, not
+  better.** Diagnosis: every false alarm is `out_of_range` on `0D0 byte7`, whose training range
+  was `[0, 129]` from the other 8 drives; `extended_short` pushes it past that. This looks like a
+  genuine **coverage gap** (this byte's true range -- quite possibly a rolling counter or
+  checksum -- extends further than 8 drives happened to show), not a rare outlier inflating the
+  bound. Percentile trimming fixes the opposite failure mode (a bound made too WIDE by one freak
+  training value); here the bound was already too NARROW, so trimming it further only made things
+  worse. **Do not train a production v4 from this without addressing the coverage question**
+  (wider training regime coverage, or excluding likely counter/checksum fields from out_of_range,
+  or a margin that EXPANDS rather than trims the learned range) -- the feature is implemented and
+  tested, but this specific use of it is a documented dead end, not a fix.
 
 ### Final evaluation (`integration/run_final_evaluation.py`): Block 5, RUN on 2026-09-24 -- `results/final_evaluation.json`
 - The one-time, held-out v1-vs-v2 comparison on `final_test` (build plan S9). `run_final_evaluation()`
@@ -258,13 +299,13 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
    - Out-of-range and flatline checks per decoded signal of the watch-list IDs, using `preprocess(window, Decoder)` at training and scoring time.
    - Percentile bounds instead of min/max, chosen by cross-validation (the other project found min/max bounds too loose).
    - Measure with `crossval attacks` and `crossval ambient`; keep only if recall rises without more false alarms.
-6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90, e.g. with percentile bounds or more regime coverage in train (a manifest change is a team decision).
+6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90. Percentile out-of-range bounds were tried and built (`bound_percentile`, see the Stage 2 hardening section above) but do NOT help -- the cause is a coverage gap (0D0 byte7's true range exceeds what 8 drives showed), not an outlier, so trimming the bound only hurts. Try wider training regime coverage (a manifest change, team decision) or excluding counter/checksum-like fields from out_of_range instead.
 7. **Report the plan's metrics:** false alarms per hour (already in the cross-validation reports), detection delay per attack (time to first alert after the interval starts), recall for fully vs partly covered windows (`interval_overlap_s`).
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
 9. **Done, 2026-09-24:** the one-time final_test v1-vs-v2 comparison has been run (see the Final evaluation section above, `results/final_evaluation.json`). Headline: v2 recall 64.9% vs v1 0.39%, but v2's false-alarm rate on final_test is 9.07% (well above the 1% target) and it still misses max_engine_coolant_temp (the one unseen-target attack) and reverse_light_off entirely. Worth digging into before presenting this as a clean win.
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
 11. **Done:** Block 3 (`part3/`, freeze + offset) and Block 4 integration (`integration/run_demo.py`, one command runs both the ordinary and test paths). See the Part 3 / Integration sections above for real-data numbers, including the unexplained 29.7% false-alarm rate on generic (non-watch-list-targeted) Red Team attacks, which is worth digging into before the demo.
-12. **Later:** connect the dashboard to real Defender output, the second-opinion escalation service (build plan section 7).
+12. **Done, 2026-09-24:** dashboard connected to real v2 Defender output (see the Dashboard section above); also fixed a `.gitignore` bug that had kept the dashboard's own data-handling source files out of git entirely. **Still open:** the second-opinion escalation service (build plan section 7) -- still a stub.
 
 ## Rules for any code touching data
 

@@ -5,7 +5,9 @@ __pycache__/
 .pytest_cache/
 
 # PRIVACY: raw vehicle data and logs stay local, never uploaded
-data/
+# (anchored to the repo root -- a bare 'data/' also matched
+# dashboard/src/data/, silently excluding real source files from git)
+/data/
 logs/
 *.csv
 *.log

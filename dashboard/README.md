@@ -1,9 +1,11 @@
 # EdgeGuard dashboard (Member 4: dashboard and demo UI)
 
-React + Vite dashboard for the EdgeGuard demo. Currently runs entirely on
-mock `DefenderOutput` records shaped exactly like `shared/schemas.py` in the
-main EdgeGuard repo, so swapping in real output is a one-line change (see
-"Connecting the real feed" below) with no component changes needed.
+React + Vite dashboard for the EdgeGuard demo. Wired to a REAL replay of
+`DefenderOutput` records by default (`DATA_SOURCE = "live"` in `App.jsx`) --
+real ROAD development captures, scored by the real trained v2 Defender, not
+synthetic mock data. The mock generator (`src/data/mockRun.js`) is still
+available by flipping `DATA_SOURCE` back to `"mock"` for offline UI work
+that doesn't need real numbers (see "Data sources" below).
 
 ## Layout
 
@@ -61,21 +63,43 @@ three multi-window attack bursts, since a real injected attack spans several
 consecutive 1-second windows, not one isolated blip. The threshold value
 (`0.9642248722316866`) matches the mock example already shared.
 
-## Connecting the real feed
+## Data sources
 
-1. Implement `connectLiveFeed()` in `src/data/liveFeed.js` to pull real
-   `DefenderOutput` records from wherever Part 2's inference ends up exposed
-   (once Member 5's Nano runtime work and the "real mode" of
-   `defender/nano_runner.py` exist).
-2. In `src/App.jsx`, flip `DATA_SOURCE` from `"mock"` to `"live"` and swap the
-   `buildMockRun(...)` call for the live feed.
+- **`"live"` (default)** -- `src/data/liveFeed.js` loads `src/data/realRun.json`,
+  a precomputed replay built by `dashboard/scripts/build_real_run.py`: it
+  scores three real ROAD development captures (`correlated_signal_attack_2`,
+  `max_speedometer_attack_1`, `reverse_light_on_attack_2`) end to end with the
+  real trained v2 Defender (`defender/defender.py`) and writes out real
+  `attack_score` / `evidence` / `latency_ms` per window, in order, no ground
+  truth included (`DefenderOutput` has no label field, so the dashboard shows
+  exactly what the Defender itself would say in real deployment). 188 windows,
+  86 of them flagged ATTACK. This is a REPLAY of a precomputed run, not a
+  socket to a running Nano -- there is no live streaming inference process
+  anywhere in this repo yet, so "live" means "real recorded Defender output,"
+  not "real-time." `App.jsx` loads it asynchronously (`connectLiveFeed()`
+  returns a Promise) and shows a brief loading state first.
+- **`"mock"`** -- `src/data/mockRun.js`'s deterministic generator, for UI work
+  that shouldn't depend on real data being present or on retraining.
 
-No component under `App.jsx` needs to change — they only ever consume
-`DefenderOutput`-shaped objects.
+To regenerate `realRun.json` (e.g. after retraining v2, or to use different
+captures), from the EdgeGuard repo root:
+
+```bash
+python -m dashboard.scripts.build_real_run --data-dir ~/Downloads/road
+```
+
+No component under `App.jsx` needs to change for either data source -- they
+only ever consume `DefenderOutput`-shaped objects.
 
 ## Known gaps / open questions (worth raising at the team discussion)
 
+- **No live streaming pipeline.** `"live"` replays a precomputed
+  `realRun.json`, not a socket to a running Nano -- see "Data sources"
+  above. Wiring an actual live stream is separate future work.
 - CAN ID parsing is best-effort text parsing, not a real field — see above.
+  Checked against every unique evidence string in the real replay: 26 of 28
+  resolve a CAN ID; the other 2 are the "no anomaly" strings, which
+  correctly have none to report.
 - Local/cloud routing has no backend; it's UI-only until the team decides
   the HP edge/cloud requirement.
 - `part1/windowing.py` locks window/stride to 1.0s/1.0s ("no overlap"), but

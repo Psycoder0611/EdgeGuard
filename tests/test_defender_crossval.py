@@ -13,8 +13,8 @@ import json
 import pytest
 
 from defender import crossval
-from defender.crossval import (ambient_loco, attack_cv, binomial_upper_95, fold_watch_ids,
-                               load_ambient, main)
+from defender.crossval import (ambient_loco, attack_cv, binomial_upper_95, fit_models,
+                               fold_watch_ids, load_ambient, main)
 from defender.stage2 import Stage2Model
 from part1.pipeline import RoadData
 
@@ -137,3 +137,31 @@ def test_main_attacks_writes_report(fake_road, tmp_path):
     out = tmp_path / "out" / "attacks.json"
     assert cli(fake_road, "attacks", out) == 0
     assert len(json.loads(out.read_text())["per_capture"]) == 5
+
+
+# ---------- bound_percentile threading ---------------------------------
+def test_fit_models_bound_percentile_narrows_stage2_bounds(fake_road):
+    road = road_for(fake_road)
+    windows, stats = load_ambient(road, TRAIN_VAL, 10, ["0D0"], quiet)
+    _, stage2_none = fit_models(TRAIN_VAL, windows, stats, ["0D0"], "width", None)
+    _, stage2_p = fit_models(TRAIN_VAL, windows, stats, ["0D0"], "width", 10.0)
+    assert stage2_p.bound_percentile == 10.0
+    assert stage2_none.bound_percentile is None
+    # Same full range either way; only the out-of-range bounds narrow.
+    assert stage2_p.field_range == stage2_none.field_range
+    assert stage2_p.field_bounds != stage2_none.field_bounds
+
+
+def test_main_ambient_records_bound_percentile_in_settings(fake_road, tmp_path):
+    out = tmp_path / "out" / "loco.json"
+    assert cli(fake_road, "ambient", out, "--stage2-watch", "0D0",
+              "--bound-percentile", "10") == 0
+    report = json.loads(out.read_text())
+    assert report["settings"]["bound_percentile"] == 10.0
+
+
+def test_main_ambient_bound_percentile_defaults_to_none(fake_road, tmp_path):
+    out = tmp_path / "out" / "loco.json"
+    assert cli(fake_road, "ambient", out, "--stage2-watch", "0D0") == 0
+    report = json.loads(out.read_text())
+    assert report["settings"]["bound_percentile"] is None
