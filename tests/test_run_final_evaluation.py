@@ -82,6 +82,35 @@ def test_reports_the_real_v1_vs_v2_gap_on_final_test(fake_road):
     assert report.baseline_recall_by_family == {"speed": pytest.approx(0.5)}
     assert report.updated_recall_by_family == {"speed": pytest.approx(1.0)}
 
+    # v1 misses half the speed attacks, so it only catches one of the two
+    # interval captures (speed_attack_3 and its masquerade twin); v2 catches
+    # both. Neither is a re-tune of anything -- same frozen scoring pass.
+    assert report.baseline_detection_delay["captures_with_an_interval"] == 2
+    assert report.baseline_detection_delay["captures_detected"] == 1
+    assert report.updated_detection_delay["captures_with_an_interval"] == 2
+    assert report.updated_detection_delay["captures_detected"] == 2
+    assert report.updated_detection_delay["mean_delay_s"] == pytest.approx(1.0)
+    assert report.updated_detection_delay["max_delay_s"] == pytest.approx(1.0)
+
+
+def test_detection_delay_is_none_when_final_test_has_no_interval_capture(fake_road, tmp_path):
+    """A final_test made only of ambient captures has nothing to measure a
+    delay against -- this must report None, never raise and never invent a
+    number."""
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    v2 = Defender.load(model_dir, "v2")
+    manifest = load_manifest(fake_road.manifest_path)
+    only_ambient = [c for c in manifest.captures
+                   if not (c.group == "final_test" and c.kind != "ambient")]
+    path = tmp_path / "ambient_only_final_test.json"
+    path.write_text(Manifest(vehicle_id=manifest.vehicle_id, captures=only_ambient)
+                    .model_dump_json(indent=2), encoding="utf-8")
+
+    report = run_final_evaluation(v1, v2, fake_road.data_dir, path)
+    assert report.baseline_detection_delay is None
+    assert report.updated_detection_delay is None
+
 
 def test_rejects_a_manifest_with_no_final_test_captures(fake_road, tmp_path):
     model_dir = train(fake_road)

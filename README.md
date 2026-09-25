@@ -119,6 +119,16 @@ One-time held-out evaluation (`final_test`, never touched during development —
 
 v2's Stage 2 payload check is what catches anything beyond fuzzing attacks — the whole reason this project exists. It is also honestly not finished: false alarms on final_test (9.07%) are well above the 1% target, and two attack types are still missed entirely.
 
+**Detection delay** (build plan requirement, same frozen `final_test` scoring pass, no re-run of anything): time from the real attack's onset to the first ATTACK-decision window closing, measured only on the 11 `final_test` captures with a real, continuous injection interval (fabrication/masquerade attacks — fuzzing has no single onset to measure from, so it's excluded).
+
+| | v1 | v2 |
+|---|---|---|
+| Captures ever detected | 5 of 11 | 6 of 11 |
+| Mean delay, when detected | 28.2 s | **0.57 s** |
+| p95 delay, when detected | 39.5 s | 0.93 s |
+
+v1 does eventually flag some attacks, but only after the payload-free timing signal happens to drift far enough — tens of seconds in. v2 catches what it catches almost immediately (under a second on average). Read this together with recall, not instead of it: these averages are each over a different, small subset of captures (the ones that model actually detected at all), not the same 11 for both — a fair comparison, not a cherry-picked one, but a small-n one.
+
 ## Measured on the ZGX Nano GB10
 
 Run for real over SSH on the competition node (`spark-3f6`, aarch64): `bash setup.sh`, then both models scored against the same real ROAD validation windows on-device (`results/nano_benchmark_v1_real.json`, `results/nano_benchmark_v2_real.json`):

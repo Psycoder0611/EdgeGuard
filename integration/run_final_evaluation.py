@@ -18,22 +18,25 @@ Usage:
 
 Prints and saves a paired report for both versions: recall (overall and by
 attack family), false-alarm rate, precision, f1 and mean inference latency,
-via part3.evidence_gate.compare_final_models. It does NOT compute detection
-delay or edge/end-to-end latency percentiles across a replayed sequence --
-CLAUDE.md's "report the plan's metrics" item is still open beyond what
-evidence_gate.py itself reports.
+via part3.evidence_gate.compare_final_models, plus detection delay per
+model (part3.detection_delay: time from real attack onset to the first
+ATTACK-decision window's close, per fabrication/masquerade final_test
+capture -- fuzzing has no single onset and is excluded). It does NOT
+compute edge/end-to-end latency percentiles across a replayed sequence --
+CLAUDE.md's "report the plan's metrics" item is still open beyond that.
 """
 
 import argparse
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, NamedTuple, Optional
 
 from pydantic import BaseModel, ConfigDict
 
 from defender.defender import Defender
 from part1.pipeline import RoadData, preprocess
 from part1.split_manifest import MANIFEST_PATH, load_manifest
+from part3.detection_delay import DetectionDelayReport, Scored, compute_detection_delay
 from part3.evaluator import evaluate_batch
 from part3.evidence_gate import EvidenceReport, compare_final_models
 from part3.metrics import MetricsReport, compute_metrics
@@ -52,6 +55,8 @@ class FinalEvaluationReport(BaseModel):
     updated: Dict[str, Optional[float]]
     baseline_recall_by_family: Dict[str, Optional[float]]
     updated_recall_by_family: Dict[str, Optional[float]]
+    baseline_detection_delay: Optional[Dict[str, Optional[float]]] = None
+    updated_detection_delay: Optional[Dict[str, Optional[float]]] = None
 
 
 def _metrics_dict(report: MetricsReport) -> Dict[str, Optional[float]]:
@@ -60,6 +65,32 @@ def _metrics_dict(report: MetricsReport) -> Dict[str, Optional[float]]:
         "tn": report.tn, "fn": report.fn, "recall": report.recall,
         "false_alarm_rate": report.false_alarm_rate, "precision": report.precision,
         "f1": report.f1, "mean_inference_ms": report.mean_inference_ms,
+    }
+
+
+class _WindowTiming(NamedTuple):
+    """Just enough for part3.detection_delay -- capture_id, window_start,
+    window_end -- WITHOUT the window's raw frames. final_test has ~5,200
+    windows at ~2,400 CAN frames each; keeping every full TrafficWindow
+    alive for the whole run (instead of letting it be garbage-collected
+    once scored, as before this existed) is roughly 12 million Frame
+    objects at once -- enough to OOM-kill this script. Duck-types as the
+    part of TrafficWindow that part3.detection_delay.compute_detection_delay
+    actually reads (capture_id/window_start/window_end only, never .frames).
+    """
+    capture_id: str
+    window_start: float
+    window_end: float
+
+
+def _delay_dict(report: DetectionDelayReport) -> Dict[str, Optional[float]]:
+    return {
+        "captures_with_an_interval": report.captures_with_an_interval,
+        "captures_detected": report.captures_detected,
+        "mean_delay_s": report.mean_delay_s,
+        "median_delay_s": report.median_delay_s,
+        "p95_delay_s": report.p95_delay_s,
+        "max_delay_s": report.max_delay_s,
     }
 
 
@@ -95,6 +126,7 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
     road = RoadData(data_dir, manifest=manifest, final_evaluation=True)
 
     window_ids: List[str] = []
+    window_timings: List[_WindowTiming] = []
     baseline_outputs: List[DefenderOutput] = []
     updated_outputs: List[DefenderOutput] = []
     labels: List[GroundTruthLabel] = []
@@ -104,7 +136,11 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
             baseline_outputs.append(baseline.score_window(processed))
             updated_outputs.append(updated.score_window(processed))
             labels.append(label)
+            window_timings.append(_WindowTiming(window.capture_id, window.window_start,
+                                                window.window_end))
             window_ids.append(window.window_id)
+            # `window` (and its ~2,400 raw frames) is dropped here, on the
+            # next loop iteration -- only the three numbers above survive.
 
     if not window_ids:
         raise ValueError("final_test captures produced no windows")
@@ -116,6 +152,20 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
         final_test_window_ids=window_ids, training_window_ids=training_ids,
     )
 
+    # Detection delay: same frozen scoring pass above, no re-run, no new
+    # decision -- only fabrication/masquerade captures carry a real
+    # injection_interval, so a final_test made only of ambient/fuzzing
+    # (as in some unit tests) legitimately has none to report.
+    baseline_delay = None
+    updated_delay = None
+    try:
+        baseline_delay = _delay_dict(compute_detection_delay(
+            [Scored(w, o, l) for w, o, l in zip(window_timings, baseline_outputs, labels)]))
+        updated_delay = _delay_dict(compute_detection_delay(
+            [Scored(w, o, l) for w, o, l in zip(window_timings, updated_outputs, labels)]))
+    except ValueError:
+        pass
+
     return FinalEvaluationReport(
         data_dir=str(data_dir),
         final_test_captures=names,
@@ -126,6 +176,8 @@ def run_final_evaluation(baseline: Defender, updated: Defender, data_dir,
         updated=_metrics_dict(report.updated),
         baseline_recall_by_family=_recall_by_family(baseline_outputs, labels),
         updated_recall_by_family=_recall_by_family(updated_outputs, labels),
+        baseline_detection_delay=baseline_delay,
+        updated_detection_delay=updated_delay,
     )
 
 
@@ -167,8 +219,12 @@ def main(argv=None) -> int:
     print(f"Windows: {report.windows}")
     print(f"\n{report.baseline_version} (baseline): {report.baseline}")
     print(f"  recall by family: {report.baseline_recall_by_family}")
+    if report.baseline_detection_delay:
+        print(f"  detection delay: {report.baseline_detection_delay}")
     print(f"\n{report.updated_version} (updated):  {report.updated}")
     print(f"  recall by family: {report.updated_recall_by_family}")
+    if report.updated_detection_delay:
+        print(f"  detection delay: {report.updated_detection_delay}")
     print(f"\nSaved to: {output_path}")
     return 0
 

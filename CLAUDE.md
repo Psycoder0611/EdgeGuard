@@ -360,6 +360,47 @@ not that**; both are independent Stage 2 variants, not built from a `HardeningSe
 - Calibrated tests: `tests/test_hardening_report.py` (9 tests) and 3 new tests in
   `tests/test_defender_run_training.py` for `--harden-v5`; 512 tests passing repo-wide.
 
+### Detection delay added, real re-run, 2026-09-25 (`part3/detection_delay.py`)
+
+Closes half of item 7 below (false alarms/hour was already done; detection delay was the other
+open piece). Measurement only -- v1 and v2 are the same frozen models, no retraining, no new
+decision made from this. Reuses the exact same one-time final_test scoring pass
+`integration/run_final_evaluation.py` already does; just also keeps window_start/window_end and
+feeds them to `compute_detection_delay()`, which finds, per capture with a real continuous
+injection interval (fabrication/masquerade only -- fuzzing has no single onset), the first
+ATTACK-decision window at or after the interval's start and reports its window_end minus the
+interval start (window collection time is real detection cost; inference is ~1-2ms and reported
+separately, per the plan's own metric definition).
+
+**Real bug caught building this, before it ever reached results/final_evaluation.json:** the
+first implementation kept every scored TrafficWindow (including its ~2,400 raw CAN frames) alive
+for the whole final_test run just to read three numbers off each one later -- roughly 12 million
+Frame objects at once across 5,178 windows, which OOM-killed the script (`exit 137`, empty
+stdout, no traceback -- SIGKILL doesn't allow one) on every attempt until diagnosed. Fixed by
+extracting a lightweight `_WindowTiming(capture_id, window_start, window_end)` per window instead
+of retaining the window itself; peak RSS dropped to 52MB. Worth remembering: never accumulate a
+list of TrafficWindow objects across a whole capture set for later use -- extract only the fields
+actually needed, immediately, or the raw frames make it unnecessarily heavy.
+
+Verified before trusting the re-run: `results/final_evaluation.json`'s tp/fp/tn/fn/recall/
+precision/f1/recall_by_family for both v1 and v2 are byte-identical to the pre-existing report
+(only `mean_inference_ms` moved, as expected -- it's a timing measurement, not a frozen result).
+
+Real result, 11 final_test captures with a real interval:
+
+|                          | v1    | v2       |
+|--------------------------|-------|----------|
+| captures ever detected   | 5/11  | 6/11     |
+| mean delay (detected)    | 28.2s | 0.57s    |
+| p95 delay (detected)     | 39.5s | 0.93s    |
+
+v1's rare detections come from Stage 1 timing drifting far enough to cross threshold, which takes
+a long time; v2 catches what it catches almost immediately. Read alongside recall, not instead of
+it -- the "detected" subsets differ in size and identity between the two models (5 vs 6 of the
+same 11 captures), so this is a fair but small-n comparison. README's "Real results" section has
+this table; `results/final_evaluation.json`'s `baseline_detection_delay` / `updated_detection_delay`
+have the full numbers.
+
 ### Final evaluation (`integration/run_final_evaluation.py`): Block 5, RUN on 2026-09-24 -- `results/final_evaluation.json`
 - The one-time, held-out v1-vs-v2 comparison on `final_test` (build plan S9). `run_final_evaluation()`
   is the only place in the codebase that constructs `RoadData(..., final_evaluation=True)`; it uses
@@ -499,7 +540,10 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
    - Percentile bounds instead of min/max, chosen by cross-validation (the other project found min/max bounds too loose).
    - Measure with `crossval attacks` and `crossval ambient`; keep only if recall rises without more false alarms.
 6. **Reduce false-alarm sensitivity to training coverage.** Target `extended_short`'s 29 / 90. Percentile out-of-range bounds were tried and built (`bound_percentile`, see the Stage 2 hardening section above) but do NOT help -- the cause is a coverage gap (0D0 byte7's true range exceeds what 8 drives showed), not an outlier, so trimming the bound only hurts. Try wider training regime coverage (a manifest change, team decision) or excluding counter/checksum-like fields from out_of_range instead. (This is a different false-alarm problem from item 13's watch-list widening -- that one didn't move `extended_short` either way.)
-7. **Report the plan's metrics:** false alarms per hour (already in the cross-validation reports), detection delay per attack (time to first alert after the interval starts), recall for fully vs partly covered windows (`interval_overlap_s`).
+7. **Report the plan's metrics.** Done: false alarms per hour (cross-validation reports, and the
+   final_test-vs-crossval comparison in item 15 below), detection delay per attack (see the
+   Detection delay section above). Still open: recall for fully vs partly covered windows
+   (`interval_overlap_s` is already recorded on every GroundTruthLabel; nothing consumes it yet).
 8. **Part 3 integration:** the injector works on a COPY of `RoadData` windows, re-windows with `windowing.windows_from_frames`, calls `preprocess()`, and the evaluator joins `DefenderOutput` with `GroundTruthLabel` by `window_id`.
 9. **Done, 2026-09-24:** the one-time final_test v1-vs-v2 comparison has been run (see the Final evaluation section above, `results/final_evaluation.json`). Headline: v2 recall 64.9% vs v1 0.39%, but v2's false-alarm rate on final_test is 9.07% (well above the 1% target) and it still misses max_engine_coolant_temp (the one unseen-target attack) and reverse_light_off entirely. Worth digging into before presenting this as a clean win.
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.

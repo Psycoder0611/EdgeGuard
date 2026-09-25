@@ -1,5 +1,5 @@
 {
-  "data_dir": "/Users/saranyavaitheeswaran/Downloads/road",
+  "data_dir": "data/road",
   "final_test_captures": [
     "ambient_dyno_drive_basic_short",
     "ambient_highway_street_driving_diagnostics",
@@ -29,7 +29,7 @@
     "false_alarm_rate": 0.004065867046147591,
     "precision": 0.047619047619047616,
     "f1": 0.007142857142857143,
-    "mean_inference_ms": 0.3100372769620036
+    "mean_inference_ms": 0.42277066532470325
   },
   "updated": {
     "windows": 5178.0,
@@ -41,7 +41,7 @@
     "false_alarm_rate": 0.09066883512909128,
     "precision": 0.2736156351791531,
     "f1": 0.3848797250859107,
-    "mean_inference_ms": 1.796056125933116
+    "mean_inference_ms": 2.1743297841192426
   },
   "baseline_recall_by_family": {
     "correlated_signal": 0.0,
@@ -58,5 +58,21 @@
     "max_speedometer": 1.0,
     "reverse_light_off": 0.0,
     "reverse_light_on": 0.3958333333333333
+  },
+  "baseline_detection_delay": {
+    "captures_with_an_interval": 11.0,
+    "captures_detected": 5.0,
+    "mean_delay_s": 28.197365400000002,
+    "median_delay_s": 30.929722,
+    "p95_delay_s": 39.475915,
+    "max_delay_s": 39.475915
+  },
+  "updated_detection_delay": {
+    "captures_with_an_interval": 11.0,
+    "captures_detected": 6.0,
+    "mean_delay_s": 0.5725555000000001,
+    "median_delay_s": 0.5825144999999998,
+    "p95_delay_s": 0.9297220000000017,
+    "max_delay_s": 0.9297220000000017
   }
 }
