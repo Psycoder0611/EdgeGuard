@@ -10,10 +10,14 @@ import json
 
 import pytest
 
+import httpx
+from fastapi.testclient import TestClient
+
 from defender.defender import Defender
 from defender.run_training import main as train_main
-from integration.run_demo import (ATTACK_FAMILIES, _development_captures, main,
-                                  run_ordinary, run_test)
+from integration.run_demo import (ATTACK_FAMILIES, _development_captures,
+                                  calibrate_escalation_band, main, run_ordinary, run_test)
+from part1.mock_cloud_endpoint import app as cloud_app
 
 
 def train(fake):
@@ -147,6 +151,83 @@ def test_test_path_rejects_empty_capture_list(fake_road):
 
 
 # ---------------------------------------------------------------------
+# Ordinary path: cloud-escalation wiring (build plan section 7)
+# ---------------------------------------------------------------------
+
+def test_calibrate_escalation_band_stays_in_the_valid_range(fake_road):
+    """Regression coverage for the same off-center-threshold bug fixed in
+    part1.escalation_policy: fake_road's real threshold (~0.774) is nowhere
+    near 0.5, so an unclipped band would break should_escalate() outright."""
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    band = calibrate_escalation_band(v1, fake_road.data_dir, fake_road.manifest_path, 1.0)
+    assert band == pytest.approx(0.5)
+
+
+def test_run_ordinary_escalate_requires_max_escalation_rate(fake_road):
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    with pytest.raises(ValueError, match="max_escalation_rate"):
+        run_ordinary(v1, fake_road.data_dir, fake_road.manifest_path, "validation",
+                     None, None, "SIMULATED_ALERT", escalate=True)
+
+
+def test_run_ordinary_without_escalate_leaves_escalation_fields_none(fake_road):
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    summary = run_ordinary(v1, fake_road.data_dir, fake_road.manifest_path,
+                           "validation", None, None, "SIMULATED_ALERT")
+    assert summary.escalation_band_half_width is None
+    assert summary.egress is None
+
+
+def test_run_ordinary_escalate_leaves_local_decisions_unchanged_when_cloud_unreachable(fake_road):
+    """The single most important property of this feature: a failed or
+    unreachable second opinion must never affect the local decision or
+    action, only be recorded as a failed call."""
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    baseline = run_ordinary(v1, fake_road.data_dir, fake_road.manifest_path,
+                            "validation", None, None, "SIMULATED_ALERT")
+    escalated = run_ordinary(v1, fake_road.data_dir, fake_road.manifest_path,
+                             "validation", None, None, "SIMULATED_ALERT",
+                             escalate=True, max_escalation_rate=1.0,
+                             cloud_url="http://127.0.0.1:9")
+
+    assert escalated.action_counts == baseline.action_counts
+    assert escalated.attack_decisions == baseline.attack_decisions
+    assert escalated.escalation_band_half_width == pytest.approx(0.5)
+    assert escalated.egress["windows"] == 38
+    assert escalated.egress["escalations"] == 22
+    assert escalated.egress["failed_calls"] == 22          # nothing is listening on :9
+    assert escalated.egress["corrections"] == 0
+    assert escalated.egress["correction_rate"] is None      # no answered calls at all
+
+
+def test_run_ordinary_escalate_gets_a_real_second_opinion_end_to_end(fake_road, monkeypatch):
+    """Route the escalation client at a real FastAPI TestClient (the actual
+    route logic in part1.mock_cloud_endpoint, not a stub) instead of a real
+    socket, so this exercises the genuine confirm/override decision."""
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    client = TestClient(cloud_app)
+
+    def fake_post(url, json=None, timeout=None):
+        return client.post("/advise", json=json)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    summary = run_ordinary(v1, fake_road.data_dir, fake_road.manifest_path,
+                           "validation", None, None, "SIMULATED_ALERT",
+                           escalate=True, max_escalation_rate=1.0,
+                           cloud_url="http://fake-cloud")
+
+    assert summary.egress["escalations"] == 22
+    assert summary.egress["failed_calls"] == 0              # every call actually answered
+    assert summary.egress["correction_rate"] is not None
+    assert 0 <= summary.egress["corrections"] <= 22
+
+
+# ---------------------------------------------------------------------
 # CLI: one command, both paths
 # ---------------------------------------------------------------------
 
@@ -220,3 +301,40 @@ def test_cli_single_test_family_via_flag(fake_road, tmp_path):
                          "--output-dir", str(out_dir))) == 0
     test = json.loads((out_dir / "demo_test.json").read_text(encoding="utf-8"))
     assert test["families_tested"] == ["offset"]
+
+
+# ---------------------------------------------------------------------
+# CLI: --escalate
+# ---------------------------------------------------------------------
+
+def test_cli_escalate_requires_max_escalation_rate(fake_road, tmp_path):
+    model_dir = train(fake_road)
+    with pytest.raises(SystemExit):
+        main(cli_args(fake_road, model_dir, "--escalate",
+                      "--output-dir", str(tmp_path / "results")))
+
+
+def test_cli_rejects_escalate_with_test_only_mode(fake_road, tmp_path):
+    model_dir = train(fake_road)
+    with pytest.raises(SystemExit):
+        main(cli_args(fake_road, model_dir, "--mode", "test", "--escalate",
+                      "--max-escalation-rate", "1.0",
+                      "--output-dir", str(tmp_path / "results")))
+
+
+def test_cli_escalate_writes_and_prints_the_egress_report(fake_road, tmp_path, capsys):
+    model_dir = train(fake_road)
+    out_dir = tmp_path / "results"
+    assert main(cli_args(fake_road, model_dir, "--mode", "ordinary", "--escalate",
+                         "--max-escalation-rate", "1.0",
+                         "--cloud-url", "http://127.0.0.1:9",   # nothing listening there
+                         "--output-dir", str(out_dir))) == 0
+
+    ordinary = json.loads((out_dir / "demo_ordinary.json").read_text(encoding="utf-8"))
+    assert ordinary["escalation_band_half_width"] == pytest.approx(0.5)
+    assert ordinary["egress"]["escalations"] == 22
+    assert ordinary["egress"]["failed_calls"] == 22
+
+    output = capsys.readouterr().out
+    assert "Cloud escalation path" in output
+    assert "Escalated:      22 / 38" in output

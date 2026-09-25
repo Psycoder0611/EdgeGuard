@@ -9,6 +9,22 @@ check: "One command runs both ordinary and test paths").
                     (ALERT/ISOLATION or FORWARD). No labels: this is what
                     the pipeline looks like in ordinary use.
 
+                    --escalate additionally wires build plan section 7's
+                    cloud-escalation path onto these same windows: a band
+                    half-width is calibrated on VALIDATION scores only
+                    (part1.escalation_policy.choose_band_half_width, never
+                    on the windows being scored), then each output within
+                    that band around the threshold is sanitized
+                    (part1.sanitizer) and sent to a simulated cloud second
+                    opinion (part1.mock_cloud_endpoint) -- run that
+                    service separately first:
+                        uvicorn part1.mock_cloud_endpoint:app --port 9000
+                    The local decision is never blocked on this call: a
+                    failed or slow simulated-cloud call is recorded (
+                    part1.egress_metrics) as a failure, not silently
+                    dropped, and the ordinary path's own decisions and
+                    actions are unaffected either way.
+
     Test path       Fleet replay of DEVELOPMENT captures only (Red Team
                     development-only rule, see part3.red_team_agent) ->
                     Red Team proposes an attack (part3.red_team_agent
@@ -30,6 +46,7 @@ path is the final evaluation (build plan S9, Block 5 does that once).
 """
 
 import argparse
+import dataclasses
 import json
 import statistics
 from pathlib import Path
@@ -40,7 +57,11 @@ from pydantic import BaseModel, ConfigDict
 from defender.defender import Defender
 from defender.nano_runner import REAL_MODE_GROUPS, real_windows
 from defender.simulated_consumer import SIMULATED_ALERT, SIMULATED_ISOLATION, SimulatedConsumer
+from part1.egress_metrics import EgressReport, EscalationOutcome, compute_egress_report
+from part1.escalation_policy import choose_band_half_width, should_escalate
+from part1.mock_cloud_endpoint import request_second_opinion
 from part1.pipeline import RoadData, preprocess
+from part1.sanitizer import sanitize
 from part1.split_manifest import MANIFEST_PATH, load_manifest
 from part3.attack_injector import inject
 from part3.evaluator import EvaluationResult, evaluate_batch
@@ -50,6 +71,7 @@ from part3.red_team_agent import propose
 from shared.schemas import GroundTruthLabel, TrafficWindow
 
 ATTACK_FAMILIES = ("freeze", "offset")
+DEFAULT_CLOUD_URL = "http://127.0.0.1:9000"   # part1.mock_cloud_endpoint, run separately
 
 
 def _p95(values: List[float]) -> float:
@@ -72,6 +94,8 @@ class OrdinarySummary(BaseModel):
     latency_ms_median: float
     latency_ms_p95: float
     latency_ms_max: float
+    escalation_band_half_width: Optional[float] = None
+    egress: Optional[Dict[str, object]] = None
 
 
 class TestSummary(BaseModel):
@@ -102,20 +126,63 @@ def _save(path, data: dict) -> None:
 # Ordinary path
 # ---------------------------------------------------------------------
 
+def calibrate_escalation_band(defender: Defender, data_dir, manifest_path,
+                              max_escalation_rate: float) -> float:
+    """Band half-width for should_escalate(), calibrated on VALIDATION
+    scores only -- never on the windows the ordinary path is about to
+    score for the demo, and never on development or final_test (mirrors
+    threshold.py's own choose_threshold contract)."""
+    manifest = load_manifest(manifest_path)
+    road = RoadData(data_dir, manifest=manifest)
+    scores = [
+        defender.score_window(preprocess(window)).attack_score
+        for name in manifest.names("validation")
+        for window in road.windows(name)
+    ]
+    return choose_band_half_width(scores, defender.threshold, max_escalation_rate)
+
+
 def run_ordinary(defender: Defender, data_dir, manifest_path, group: str,
                  captures: Optional[List[str]], max_windows: Optional[int],
-                 attack_action: str) -> OrdinarySummary:
+                 attack_action: str, *,
+                 escalate: bool = False,
+                 max_escalation_rate: Optional[float] = None,
+                 cloud_url: str = DEFAULT_CLOUD_URL,
+                 cloud_timeout_s: float = 2.0) -> OrdinarySummary:
     windows, capture_names = real_windows(data_dir, manifest_path, group,
                                           captures=captures, max_windows=max_windows)
     consumer = SimulatedConsumer(attack_action=attack_action)
     latencies: List[float] = []
     attack_decisions = 0
+
+    band_half_width = None
+    outcomes: List[EscalationOutcome] = []
+    if escalate:
+        if max_escalation_rate is None:
+            raise ValueError("escalate=True requires max_escalation_rate")
+        band_half_width = calibrate_escalation_band(
+            defender, data_dir, manifest_path, max_escalation_rate)
+
     for window in windows:
         output = defender.score_window(preprocess(window))
         consumer.handle(output)
         latencies.append(output.latency_ms)
         if output.decision == "ATTACK":
             attack_decisions += 1
+
+        if escalate:
+            if should_escalate(output, band_half_width).escalate:
+                advice, added_ms = request_second_opinion(
+                    sanitize(output), base_url=cloud_url, timeout_s=cloud_timeout_s)
+                outcomes.append(EscalationOutcome(
+                    window_id=output.window_id, escalated=True,
+                    added_latency_ms=added_ms,
+                    corrected=(advice.advice != "confirm") if advice is not None else None,
+                ))
+            else:
+                outcomes.append(EscalationOutcome(window_id=output.window_id, escalated=False))
+
+    egress: Optional[EgressReport] = compute_egress_report(outcomes) if escalate else None
 
     return OrdinarySummary(
         model_version=defender.model_version,
@@ -129,6 +196,8 @@ def run_ordinary(defender: Defender, data_dir, manifest_path, group: str,
         latency_ms_median=statistics.median(latencies),
         latency_ms_p95=_p95(latencies),
         latency_ms_max=max(latencies),
+        escalation_band_half_width=band_half_width,
+        egress=dataclasses.asdict(egress) if egress is not None else None,
     )
 
 
@@ -281,6 +350,20 @@ def main(argv=None) -> int:
                         help="optional path to append confirmed development-set misses "
                              "(part3.evasion_log), for later Defender hardening")
 
+    parser.add_argument("--escalate", action="store_true",
+                        help="also run the cloud-escalation path (build plan section 7) "
+                             "on ordinary-path windows; requires --max-escalation-rate "
+                             "and a running simulated cloud (see the module docstring)")
+    parser.add_argument("--max-escalation-rate", type=float, default=None,
+                        help="team decision, e.g. 0.1 (no default) -- escalation budget, "
+                             "calibrated on VALIDATION scores; only used with --escalate")
+    parser.add_argument("--cloud-url", default=DEFAULT_CLOUD_URL,
+                        help=f"simulated cloud base URL (default {DEFAULT_CLOUD_URL}; "
+                             "see part1.mock_cloud_endpoint)")
+    parser.add_argument("--cloud-timeout-s", type=float, default=2.0,
+                        help="per-call timeout for the simulated cloud second opinion "
+                             "(default 2.0)")
+
     parser.add_argument("--output-dir", default="results",
                         help="where to save demo_ordinary.json / demo_test.json "
                              "(default results)")
@@ -290,6 +373,10 @@ def main(argv=None) -> int:
         parser.error("--ordinary-max-windows must be at least 1")
     if args.test_max_windows is not None and args.test_max_windows < 1:
         parser.error("--test-max-windows must be at least 1")
+    if args.escalate and args.max_escalation_rate is None:
+        parser.error("--escalate requires --max-escalation-rate")
+    if args.escalate and args.mode == "test":
+        parser.error("--escalate only applies to the ordinary path; use --mode ordinary or both")
     families = [f.strip() for f in args.test_families.split(",") if f.strip()]
     unknown = [f for f in families if f not in ATTACK_FAMILIES]
     if unknown:
@@ -305,6 +392,8 @@ def main(argv=None) -> int:
         ordinary = run_ordinary(
             defender, args.data_dir, args.manifest, args.ordinary_group,
             ordinary_captures, args.ordinary_max_windows, args.attack_action,
+            escalate=args.escalate, max_escalation_rate=args.max_escalation_rate,
+            cloud_url=args.cloud_url, cloud_timeout_s=args.cloud_timeout_s,
         )
         _save(Path(args.output_dir) / "demo_ordinary.json", ordinary.model_dump())
         print("=== Ordinary path ===")
@@ -317,6 +406,18 @@ def main(argv=None) -> int:
               f"median {ordinary.latency_ms_median:.3f} | "
               f"p95 {ordinary.latency_ms_p95:.3f} | max {ordinary.latency_ms_max:.3f}")
         print(f"Saved to:       {Path(args.output_dir) / 'demo_ordinary.json'}")
+
+        if ordinary.egress is not None:
+            e = ordinary.egress
+            print(f"\n=== Cloud escalation path (simulated -- {args.cloud_url}) ===")
+            print(f"Band:           threshold +/- {ordinary.escalation_band_half_width:.4f} "
+                  f"(calibrated on validation scores, budget {args.max_escalation_rate})")
+            print(f"Escalated:      {e['escalations']} / {e['windows']} "
+                  f"({e['escalation_rate']:.4f})")
+            print(f"Failed calls:   {e['failed_calls']}")
+            print(f"Added latency:  mean {e['mean_added_latency_ms']} ms | "
+                  f"p95 {e['p95_added_latency_ms']} ms")
+            print(f"Corrections:    {e['corrections']} (rate {e['correction_rate']})")
 
     if args.mode in ("test", "both"):
         test_captures = (

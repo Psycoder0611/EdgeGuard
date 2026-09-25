@@ -117,7 +117,13 @@ def choose_band_half_width(
     # count_escalated is non-decreasing in width (a wider band only ever
     # includes more scores), so the largest feasible candidate can be
     # found by scanning ascending and stopping at the first violation.
-    candidates = sorted({0.0, 0.5, *(abs(s - threshold) for s in normal_scores)})
+    # Each raw |s - threshold| is clipped to 0.5: should_escalate() only
+    # accepts band_half_width in [0, 0.5], and a threshold away from 0.5
+    # (the normal case -- real thresholds are rarely exactly 0.5) can
+    # otherwise push a candidate width past that, which every existing
+    # test missed because it only ever used threshold=0.5, where
+    # |s - 0.5| can never exceed 0.5 in the first place.
+    candidates = sorted({0.0, 0.5, *(min(0.5, abs(s - threshold)) for s in normal_scores)})
     best = 0.0
     for width in candidates:
         if count_escalated(width) <= allowed:

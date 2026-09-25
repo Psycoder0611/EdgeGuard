@@ -96,3 +96,16 @@ def test_rejects_empty_scores():
 def test_rejects_out_of_range_score_in_list():
     with pytest.raises(ValueError):
         choose_band_half_width([0.5, 1.5], threshold=0.5, max_escalation_rate=0.1)
+
+
+def test_returned_band_is_always_a_valid_should_escalate_width_even_off_center():
+    """Regression: with a threshold away from 0.5 (the normal case -- a
+    real Defender threshold is rarely exactly 0.5), |score - threshold|
+    can exceed 0.5, and an unclipped candidate could leak that value out
+    as band_half_width -- which should_escalate() then rejects outright.
+    Every score here is far below a high threshold, so the naive
+    (unclipped) candidate set would have picked something well past 0.5."""
+    scores = [0.0, 0.1, 0.2, 0.3]
+    band = choose_band_half_width(scores, threshold=0.9, max_escalation_rate=1.0)
+    assert 0.0 <= band <= 0.5
+    should_escalate(output(0.1, threshold=0.9, decision="ACCEPT"), band_half_width=band)

@@ -20,3 +20,5 @@ logs/
 # Editor / OS
 .vscode/
 .DS_Store
+# Hackathon brief contains real device credentials (Tailscale, SSH) -- keep local only
+docs/Edge_AI_SJSUHack_for_Students_-_ZGX_Nano_GB10.pdf

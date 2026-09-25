@@ -154,6 +154,55 @@ v2 from ACCEPT (score 0.96) to ATTACK (score 0.999, `out_of_range` evidence).
   watch-list, so this is a rougher, broader test than the hand-targeted example above, closer
   to a stress test than a calibrated benchmark.
 
+### Cloud-escalation path (build plan section 7): wired end-to-end, 2026-09-25
+This was previously listed as "still a stub" -- that undersold what already existed:
+`part1/escalation_policy.py`, `part1/sanitizer.py`, `part1/egress_metrics.py` and
+`part1/mock_cloud_endpoint.py` were all real and individually tested, but **nothing in
+`integration/run_demo.py` ever called them together** -- the ordinary path never actually
+escalated anything. This closes that gap: the HP Edge AI SJSUHack brief (see
+`docs/Edge_AI_SJSUHack_for_Students_-_ZGX_Nano_GB10.pdf`) requires "an explicit, defensible,
+measurable decision about when to escalate to the cloud" as a judged deliverable, not an
+optional extra -- this section is that decision, made real.
+
+- **`integration/run_demo.py --escalate --max-escalation-rate <rate>`** (new): for every
+  ordinary-path window, after the local `Defender.score_window()` decision is made (and
+  logged to `SimulatedConsumer` exactly as before -- **escalation never touches the local
+  decision or action**), `should_escalate()` checks whether the score falls in an
+  uncertainty band around the threshold. If so, the window is sanitized
+  (`part1.sanitizer.sanitize`, an allow-list -- no raw CAN bytes ever leave) and POSTed to a
+  running simulated-cloud process (`part1.mock_cloud_endpoint`, launch separately with
+  `python -m uvicorn part1.mock_cloud_endpoint:app --host 127.0.0.1 --port 9000` --
+  the plain `uvicorn` command may not be on PATH depending on how it was installed; `python
+  -m uvicorn ...` always works). A failed or unreachable call is recorded as a failure
+  (`part1.egress_metrics`), never as an exception -- verified by actually killing the cloud
+  process and confirming the ordinary-path decisions and actions were byte-identical to a
+  non-escalating run.
+- **`calibrate_escalation_band()`** (new, in `run_demo.py`): the band half-width is
+  calibrated on VALIDATION scores only (`choose_band_half_width`, same "team decision,
+  no default" contract as `--max-false-alarm-rate`) -- never on the windows the ordinary
+  path is about to score, and never on development or final_test.
+- **Found and fixed a real bug while wiring this up**: `choose_band_half_width()` could
+  return a width outside the `[0, 0.5]` range `should_escalate()` itself enforces, whenever
+  the threshold was far from 0.5 -- which real Defender thresholds always are (v2's is
+  0.9988). Every existing test for it happened to use `threshold=0.5` exactly, where
+  `|score - 0.5|` can never exceed 0.5, so the bug never showed up until this was run against
+  a real model. Fixed by clipping each candidate width to 0.5; added a regression test using
+  an off-center threshold.
+- **Real run against real ROAD data, live cloud process** (v2, validation captures,
+  815 windows, `--max-escalation-rate 0.3`): band = threshold +/- 0.095; **240 / 815 (29.5%)
+  escalated**, 0 failed calls, mean added latency ~101 ms. **235 / 240 (97.9%) came back as a
+  "correction"** -- but this number is inflated by a real mismatch, not a sign the cloud
+  second opinion is unusually valuable: `mock_cloud_endpoint`'s stand-in threshold (0.6,
+  fixed) sits nowhere near v2's real threshold (0.9988), so almost every escalated score
+  disagrees with the stand-in by construction. The mechanism (calibration, sanitization,
+  graceful degradation, egress metrics) is real and correctly wired; the **correction-rate
+  number is not yet a meaningful measurement** and should not be quoted as one without
+  recalibrating the stand-in threshold relative to each model's own operating point first.
+- Calibrated tests: 9 new tests in `tests/test_integration_run_demo.py` (calibration bounds,
+  cloud-unreachable resilience, a real FastAPI `TestClient`-backed second opinion, CLI
+  validation) plus 1 regression test in `tests/test_part1_escalation_policy.py`; 521 tests
+  passing repo-wide.
+
 ### Stage 2 hardening attempts (v3, bound_percentile): two tried, neither fixes the known gaps
 - **v3** (`--harden-v3`, "rate" frozen check) was already coded before this session; trained and
   dev-checked on real data for the first time here. Result: **byte-identical to v2** on every
@@ -396,7 +445,7 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
 9. **Done, 2026-09-24:** the one-time final_test v1-vs-v2 comparison has been run (see the Final evaluation section above, `results/final_evaluation.json`). Headline: v2 recall 64.9% vs v1 0.39%, but v2's false-alarm rate on final_test is 9.07% (well above the 1% target) and it still misses max_engine_coolant_temp (the one unseen-target attack) and reverse_light_off entirely. Worth digging into before presenting this as a clean win.
 10. **Done:** real-traffic Nano benchmark (`nano_runner --model-version`, real ROAD windows via `RoadData`). Confirmed on this laptop: v1 mean 0.35 ms/window (~2,870 windows/s), v2 mean 1.74 ms/window (~575 windows/s), both on 815 real validation windows -- still needs the actual Nano hardware to confirm, not just this laptop.
 11. **Done:** Block 3 (`part3/`, freeze + offset) and Block 4 integration (`integration/run_demo.py`, one command runs both the ordinary and test paths). See the Part 3 / Integration sections above for real-data numbers, including the unexplained 29.7% false-alarm rate on generic (non-watch-list-targeted) Red Team attacks, which is worth digging into before the demo.
-12. **Done, 2026-09-24:** dashboard connected to real v2 Defender output (see the Dashboard section above); also fixed a `.gitignore` bug that had kept the dashboard's own data-handling source files out of git entirely. **Still open:** the second-opinion escalation service (build plan section 7) -- still a stub.
+12. **Done, 2026-09-24:** dashboard connected to real v2 Defender output (see the Dashboard section above); also fixed a `.gitignore` bug that had kept the dashboard's own data-handling source files out of git entirely.
 13. **Done, 2026-09-24:** closed the red-vs-blue hardening loop end to end (see the Hardening loop
     and second evidence-gate sections above): `build_hardening_set()` is now actually called on a real
     evasion log (`part3/hardening_report.py`), a real candidate (`v5`) was built from it, and it was
@@ -408,6 +457,19 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
     ~16% in every attempt so far -- a `frozen_break` sensitivity problem) and validating any future
     watch-list change against the full nested ambient LOCO, not a single-split spot check, before
     spending `final_test` on it a third time.
+14. **Done, 2026-09-25:** wired the cloud-escalation path end to end (see the Cloud-escalation
+    section above) -- `integration/run_demo.py --escalate --max-escalation-rate <rate>` now actually
+    calibrates a band, sanitizes, calls the simulated cloud, and reports egress metrics, none of
+    which happened before despite every underlying piece (`part1/escalation_policy.py`,
+    `sanitizer.py`, `egress_metrics.py`, `mock_cloud_endpoint.py`) already being real and tested.
+    This closes the HP Edge AI SJSUHack brief's explicit requirement for "an explicit, defensible,
+    measurable decision about when to escalate to the cloud" (see `docs/`), which the team's own
+    architecture doc had separately deprioritized -- **that de-scoping decision conflicts with the
+    actual competition rubric and should be revisited with the team.** Found and fixed a real bug
+    in `choose_band_half_width()` along the way (see the section above). **Still open:** the
+    simulated cloud's fixed stand-in threshold (0.6) is badly mismatched to v2's real threshold
+    (0.9988), so the real-data correction-rate number (97.9%) is not yet meaningful -- recalibrate
+    the stand-in relative to each model's own threshold before quoting that number in the demo.
 
 ## Rules for any code touching data
 
