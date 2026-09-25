@@ -203,6 +203,37 @@ optional extra -- this section is that decision, made real.
   validation) plus 1 regression test in `tests/test_part1_escalation_policy.py`; 521 tests
   passing repo-wide.
 
+### Escalation quality measured against known labels, 2026-09-25 (`part1/escalation_quality.py`)
+
+Replaces the simulated cloud's "correction rate" as the escalation metric. That rate only measured
+how often the stand-in cloud (fixed threshold 0.6) disagreed with v2 (threshold 0.9988), so it said
+nothing about whether escalation targets real mistakes. `compute_escalation_quality()` scores the
+band directly against the Red Team test path's known labels, reusing `part3.evaluator.evaluate_batch`
+for the join so it can never disagree with the detection metrics. No cloud call is involved.
+
+`integration/run_demo.py --escalate` now also applies to the test path (previously rejected with
+`--mode test`); in `--mode both` the test path reuses the ordinary path's band. The ordinary path's
+printout now labels the stand-in's disagreement rate as "NOT a quality metric".
+
+Real result, v2, band +/- 0.0950 (30% budget on validation normal scores), 2,511 development test
+windows (`results/escalation_quality_v2/demo_test.json`):
+
+| | |
+|---|---|
+| Escalated | 898 / 2511 (35.8%) |
+| Local mistakes | 1542 (249 false alarms, 1293 misses) |
+| Escalation precision | 48.1% |
+| Escalation recall | 28.0% -- all 249 false alarms, but only 183 / 1293 misses |
+| Error rate outside the band | 68.8% (higher than inside) |
+| Accuracy local -> ceiling with a perfect second opinion | 38.6% -> 55.8% |
+| Bundle size | 241 bytes mean, 269 max; 0 raw CAN bytes (allow-list pinned by a test) |
+
+Reading: the band's top is clipped at 1.0 (v2's threshold is 0.9988), so every ATTACK decision is
+escalated -- escalation reviews every false alarm. Misses are mostly confident (scored below the
+band) and a score-based second opinion never sees them; the 1293 misses are the same 1293 analysed
+in the hardening section (70% coverage gap). Caveat: the test mix is two attacked windows per
+normal one, so accuracy figures reflect that mix, not real attack rates.
+
 ### Stage 2 hardening attempts (v3, bound_percentile): two tried, neither fixes the known gaps
 - **v3** (`--harden-v3`, "rate" frozen check) was already coded before this session; trained and
   dev-checked on real data for the first time here. Result: **byte-identical to v2** on every
@@ -470,6 +501,23 @@ Results from before the manifest (provisional split, 0.5 s overlapping windows) 
     simulated cloud's fixed stand-in threshold (0.6) is badly mismatched to v2's real threshold
     (0.9988), so the real-data correction-rate number (97.9%) is not yet meaningful -- recalibrate
     the stand-in relative to each model's own threshold before quoting that number in the demo.
+15. **Done, 2026-09-25:** README got a "Metrics -- how and why they were chosen" section
+    (the brief asks for this by name). One derived number in it, worth recording here for
+    reproducibility: final_test false alarms per hour. `results/final_evaluation.json`'s v2
+    `updated` block has tn=4473, fp=446 normal windows, window_s=1.0 (part1/windowing.py: stride
+    == window, no overlap), so normal_hours = 4919/3600 = 1.3664h, fp/hour = 446/1.3664 = 326.4.
+    Same arithmetic on `baseline` (v1): 14.6/hour. Compared against `results/crossval_attacks.json`'s
+    cross-validated normal_windows_in_attack_captures (v2: 15.19/hour), the final_test rate is far
+    higher -- final_test's two highway drives are a driving regime the training/development data
+    (9 drives, no highway) never covered. This is the same coverage-gap story as the hardening
+    section, now visible in the false-alarm number too.
+16. **Done, 2026-09-25:** escalation measured properly (see the Escalation quality section above):
+    precision 48.1%, recall 28.0% (100% of false alarms, 14% of misses) on v2's Red Team test path,
+    ~240 bytes and 0 raw CAN bytes per escalation. The stand-in cloud's 97.9% is now explicitly
+    labelled as not a quality metric; no need to recalibrate it for the demo. README also reframed
+    per the team's Revised Plan v3 D1/D3: the Nano is the OEM's on-prem security centre plus a
+    simulated fleet (not in-car hardware), in-car latency on the Nano CPU is a lower bound, target
+    user is the OEM vehicle security analyst.
 
 ## Rules for any code touching data
 

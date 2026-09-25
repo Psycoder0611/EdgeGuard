@@ -314,12 +314,60 @@ def test_cli_escalate_requires_max_escalation_rate(fake_road, tmp_path):
                       "--output-dir", str(tmp_path / "results")))
 
 
-def test_cli_rejects_escalate_with_test_only_mode(fake_road, tmp_path):
+def test_cli_escalate_with_test_only_mode_measures_quality_without_a_cloud(
+        fake_road, tmp_path, capsys):
+    """--escalate on the test path needs no cloud: it scores the band against
+    the known Red Team labels (part1.escalation_quality)."""
     model_dir = train(fake_road)
-    with pytest.raises(SystemExit):
-        main(cli_args(fake_road, model_dir, "--mode", "test", "--escalate",
-                      "--max-escalation-rate", "1.0",
-                      "--output-dir", str(tmp_path / "results")))
+    out_dir = tmp_path / "results"
+    assert main(cli_args(fake_road, model_dir, "--mode", "test", "--escalate",
+                         "--max-escalation-rate", "1.0",
+                         "--output-dir", str(out_dir))) == 0
+    assert not (out_dir / "demo_ordinary.json").exists()
+    test = json.loads((out_dir / "demo_test.json").read_text(encoding="utf-8"))
+    q = test["escalation_quality"]
+    assert q["windows"] == test["windows_evaluated"]
+    assert q["band_half_width"] == pytest.approx(0.5)
+    assert "Escalation quality" in capsys.readouterr().out
+
+
+def test_test_path_without_band_leaves_escalation_quality_none(fake_road):
+    model_dir = train(fake_road)
+    v2 = Defender.load(model_dir, "v2")
+    summary = run_test(v2, fake_road.data_dir, fake_road.manifest_path,
+                       None, 5, list(ATTACK_FAMILIES), None)
+    assert summary.escalation_quality is None
+
+
+def test_test_path_escalation_quality_is_consistent_with_detection_metrics(fake_road):
+    """Same join as part3.evaluator, so the counts must agree exactly."""
+    model_dir = train(fake_road)
+    v1 = Defender.load(model_dir, "v1")
+    band = calibrate_escalation_band(v1, fake_road.data_dir, fake_road.manifest_path, 0.5)
+    summary = run_test(v1, fake_road.data_dir, fake_road.manifest_path,
+                       None, None, list(ATTACK_FAMILIES), None,
+                       escalation_band_half_width=band)
+    q = summary.escalation_quality
+    assert q["windows"] == summary.windows_evaluated
+    assert q["band_half_width"] == band
+    assert 0 <= q["escalated_errors"] <= q["local_errors"]
+    assert q["escalated_errors"] <= q["escalations"] <= q["windows"]
+    assert q["local_accuracy"] <= q["local_plus_perfect_cloud_accuracy"] <= 1.0
+    # v1 misses most payload attacks on fake data, so it has real mistakes to find
+    assert q["local_false_negatives"] > 0
+
+
+def test_cli_both_modes_reuse_one_band_for_ordinary_and_test(fake_road, tmp_path):
+    model_dir = train(fake_road)
+    out_dir = tmp_path / "results"
+    assert main(cli_args(fake_road, model_dir, "--escalate",
+                         "--max-escalation-rate", "0.5",
+                         "--cloud-url", "http://127.0.0.1:9",
+                         "--output-dir", str(out_dir))) == 0
+    ordinary = json.loads((out_dir / "demo_ordinary.json").read_text(encoding="utf-8"))
+    test = json.loads((out_dir / "demo_test.json").read_text(encoding="utf-8"))
+    assert (test["escalation_quality"]["band_half_width"]
+            == ordinary["escalation_band_half_width"])
 
 
 def test_cli_escalate_writes_and_prints_the_egress_report(fake_road, tmp_path, capsys):

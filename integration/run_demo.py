@@ -37,6 +37,16 @@ check: "One command runs both ordinary and test paths").
                     numbers: recall overall and by family, false-alarm
                     rate on the paired normal controls.
 
+                    With --escalate, the test path also measures whether
+                    the escalation band targets the local model's REAL
+                    mistakes (part1.escalation_quality): escalation
+                    precision and recall against these known labels,
+                    error rate outside the band, and bytes that would
+                    leave the device. No cloud call is needed for this --
+                    it is the measurable half of the escalation decision.
+                    The band is the same one the ordinary path uses,
+                    calibrated on validation scores only.
+
 Usage:
     python -m integration.run_demo --model-version v2 --data-dir ~/Downloads/road
 
@@ -59,6 +69,7 @@ from defender.nano_runner import REAL_MODE_GROUPS, real_windows
 from defender.simulated_consumer import SIMULATED_ALERT, SIMULATED_ISOLATION, SimulatedConsumer
 from part1.egress_metrics import EgressReport, EscalationOutcome, compute_egress_report
 from part1.escalation_policy import choose_band_half_width, should_escalate
+from part1.escalation_quality import compute_escalation_quality
 from part1.mock_cloud_endpoint import request_second_opinion
 from part1.pipeline import RoadData, preprocess
 from part1.sanitizer import sanitize
@@ -114,6 +125,7 @@ class TestSummary(BaseModel):
     precision: Optional[float]
     f1: Optional[float]
     mean_inference_ms: Optional[float]
+    escalation_quality: Optional[Dict[str, object]] = None
 
 
 def _save(path, data: dict) -> None:
@@ -225,7 +237,8 @@ def _development_captures(manifest_path, captures: Optional[List[str]]) -> List[
 
 def run_test(defender: Defender, data_dir, manifest_path,
             captures: Optional[List[str]], max_windows: Optional[int],
-            families: List[str], evasion_log_path: Optional[str]) -> TestSummary:
+            families: List[str], evasion_log_path: Optional[str], *,
+            escalation_band_half_width: Optional[float] = None) -> TestSummary:
     names = _development_captures(manifest_path, captures)
     manifest = load_manifest(manifest_path)
     road = RoadData(data_dir, manifest=manifest)
@@ -291,6 +304,11 @@ def run_test(defender: Defender, data_dir, manifest_path,
                     spec=spec, result=result, split="development",
                 ))
 
+    quality = (
+        compute_escalation_quality(outputs, labels, escalation_band_half_width)
+        if escalation_band_half_width is not None else None
+    )
+
     return TestSummary(
         model_version=defender.model_version,
         data_dir=str(data_dir),
@@ -305,6 +323,7 @@ def run_test(defender: Defender, data_dir, manifest_path,
         precision=overall.precision,
         f1=overall.f1,
         mean_inference_ms=overall.mean_inference_ms,
+        escalation_quality=dataclasses.asdict(quality) if quality is not None else None,
     )
 
 
@@ -351,9 +370,11 @@ def main(argv=None) -> int:
                              "(part3.evasion_log), for later Defender hardening")
 
     parser.add_argument("--escalate", action="store_true",
-                        help="also run the cloud-escalation path (build plan section 7) "
-                             "on ordinary-path windows; requires --max-escalation-rate "
-                             "and a running simulated cloud (see the module docstring)")
+                        help="also run the cloud-escalation path (build plan section 7): "
+                             "on ordinary-path windows it calls the simulated cloud (run "
+                             "it first, see the module docstring); on test-path windows it "
+                             "measures escalation precision/recall against known labels "
+                             "(no cloud needed). Requires --max-escalation-rate")
     parser.add_argument("--max-escalation-rate", type=float, default=None,
                         help="team decision, e.g. 0.1 (no default) -- escalation budget, "
                              "calibrated on VALIDATION scores; only used with --escalate")
@@ -375,14 +396,13 @@ def main(argv=None) -> int:
         parser.error("--test-max-windows must be at least 1")
     if args.escalate and args.max_escalation_rate is None:
         parser.error("--escalate requires --max-escalation-rate")
-    if args.escalate and args.mode == "test":
-        parser.error("--escalate only applies to the ordinary path; use --mode ordinary or both")
     families = [f.strip() for f in args.test_families.split(",") if f.strip()]
     unknown = [f for f in families if f not in ATTACK_FAMILIES]
     if unknown:
         parser.error(f"unsupported --test-families {unknown}; choose from {ATTACK_FAMILIES}")
 
     defender = Defender.load(args.model_dir, args.model_version)
+    band_half_width: Optional[float] = None
 
     if args.mode in ("ordinary", "both"):
         ordinary_captures = (
@@ -396,6 +416,7 @@ def main(argv=None) -> int:
             cloud_url=args.cloud_url, cloud_timeout_s=args.cloud_timeout_s,
         )
         _save(Path(args.output_dir) / "demo_ordinary.json", ordinary.model_dump())
+        band_half_width = ordinary.escalation_band_half_width
         print("=== Ordinary path ===")
         print(f"Model version:  {ordinary.model_version}")
         print(f"Captures:       {', '.join(ordinary.captures)}")
@@ -417,16 +438,22 @@ def main(argv=None) -> int:
             print(f"Failed calls:   {e['failed_calls']}")
             print(f"Added latency:  mean {e['mean_added_latency_ms']} ms | "
                   f"p95 {e['p95_added_latency_ms']} ms")
-            print(f"Corrections:    {e['corrections']} (rate {e['correction_rate']})")
+            print(f"Stand-in cloud disagreed: {e['corrections']} (rate {e['correction_rate']}) "
+                  f"-- NOT a quality metric: the stand-in's fixed threshold is not "
+                  f"calibrated to this model. See 'Escalation quality' on the test path.")
 
     if args.mode in ("test", "both"):
         test_captures = (
             [c.strip() for c in args.test_captures.split(",")]
             if args.test_captures else None
         )
+        if args.escalate and band_half_width is None:
+            band_half_width = calibrate_escalation_band(
+                defender, args.data_dir, args.manifest, args.max_escalation_rate)
         test = run_test(
             defender, args.data_dir, args.manifest, test_captures,
             args.test_max_windows, families, args.evasion_log,
+            escalation_band_half_width=band_half_width if args.escalate else None,
         )
         _save(Path(args.output_dir) / "demo_test.json", test.model_dump())
         print("\n=== Test path (Red Team attacks on development captures) ===")
@@ -440,6 +467,36 @@ def main(argv=None) -> int:
         print(f"Recall by family:   {test.recall_by_family}")
         print(f"False alarm rate:   {test.false_alarm_rate}  (on paired normal controls)")
         print(f"Saved to:           {Path(args.output_dir) / 'demo_test.json'}")
+
+        if test.escalation_quality is not None:
+            q = test.escalation_quality
+
+            def pct(value):
+                return "n/a" if value is None else f"{value:.1%}"
+
+            print("\n=== Escalation quality (test path, known labels, no cloud needed) ===")
+            print(f"Band:                   threshold +/- {q['band_half_width']:.4f} "
+                  f"(calibrated on validation scores)")
+            print(f"Escalated:              {q['escalations']} / {q['windows']} "
+                  f"({pct(q['escalation_rate'])})")
+            print(f"Local mistakes:         {q['local_errors']} "
+                  f"({q['local_false_positives']} false alarms, "
+                  f"{q['local_false_negatives']} misses)")
+            print(f"Escalation precision:   {pct(q['escalation_precision'])}  "
+                  f"(escalated windows the local model actually got wrong)")
+            print(f"Escalation recall:      {pct(q['escalation_recall'])}  "
+                  f"(local mistakes that were escalated: "
+                  f"{q['escalated_false_positives']} false alarms, "
+                  f"{q['escalated_false_negatives']} misses)")
+            print(f"Error rate outside band: {pct(q['error_rate_outside_band'])}")
+            print(f"Accuracy:               local {pct(q['local_accuracy'])} | "
+                  f"ceiling with a perfect second opinion "
+                  f"{pct(q['local_plus_perfect_cloud_accuracy'])}")
+            mean_bytes = q['bundle_bytes_mean']
+            print(f"Egress per escalation:  "
+                  f"{'n/a' if mean_bytes is None else f'{mean_bytes:.0f}'} bytes mean, "
+                  f"max {q['bundle_bytes_max']} | raw CAN bytes: 0 "
+                  f"(bundle fields: {', '.join(q['bundle_fields'])})")
 
     return 0
 
