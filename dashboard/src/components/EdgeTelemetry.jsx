@@ -1,8 +1,11 @@
 // Live device telemetry from the local analysis server (/api/system),
 // refreshed every 3 s. EdgeGuard has no language model, so there are no
 // "tokens": its unit of work is a CAN frame, so throughput is frames/s.
+// When that server isn't running, shows the recorded ZGX Nano benchmark
+// instead (clearly labelled as recorded, not live).
 import { useEffect, useState } from "react";
 import { fetchSystem } from "../data/analyzeClient";
+import { NANO_BENCHMARK as NANO } from "../data/nanoBenchmark";
 
 const POLL_MS = 3000;
 
@@ -42,10 +45,33 @@ export default function EdgeTelemetry() {
       <section className="card edge-telemetry">
         <div className="card-head">
           <h2>Edge device</h2>
-          <span className="status-badge status-disabled">{offline ? "Offline" : "Connecting"}</span>
+          <span className="status-badge status-confident" title={`Recorded benchmark from ${NANO.source}, not a live reading`}>
+            Measured on ZGX Nano
+          </span>
         </div>
-        <p className="hint">
-          Start the analysis server to see live CPU, memory and throughput:
+
+        <div className="device-banner">
+          <span className="device-chip mono">{NANO.architecture}</span>
+          <div>
+            <strong>{NANO.device} &middot; {NANO.host}</strong>
+            <span className="hint">Python {NANO.pythonVersion} &middot; CPU only, no ML runtime &middot; real ROAD windows</span>
+          </div>
+        </div>
+
+        <div className="tele-grid">
+          <Tile tone="green" label="Inference latency" value={`${NANO.latencyMsMean.toFixed(2)} ms`}
+                sub={`mean per window · p95 ${NANO.latencyMsP95.toFixed(2)} ms · max ${NANO.latencyMsMax.toFixed(2)} ms`} />
+          <Tile tone="amber" label="Throughput" value={Math.round(NANO.windowsPerSecond).toLocaleString()}
+                sub="windows / second, inference only" />
+          <Tile tone="cyan" label="Real-time headroom" value={`${Math.round(NANO.windowsPerSecond * NANO.windowSeconds)}×`}
+                sub="faster than windows arrive (1 per second)" />
+          <Tile tone="violet" label="Windows benchmarked" value={NANO.windows.toLocaleString()}
+                sub="real ROAD validation windows" />
+        </div>
+
+        <p className="hint tele-foot">
+          Recorded on the ZGX Nano ({NANO.source}), not a live reading. For live CPU and memory from
+          this machine, start the analysis server:
         </p>
         <code className="cmd">python -m uvicorn integration.analyze_server:app --host 127.0.0.1 --port 8000</code>
       </section>

@@ -1,6 +1,7 @@
 import { parseEvidence } from "../utils/parseEvidence";
 import { ACTIONS } from "./actionMeta";
 import { formatLatency } from "../utils/latency";
+import { useAnimatedNumber } from "../utils/useAnimatedNumber";
 
 // Attacker side (Red Team): what is being hit right now and so far.
 export function AttackerPanel({ output, history }) {
@@ -47,6 +48,8 @@ export function DefenderPanel({ output, history, attackAction, onAttackActionCha
   const meta = action ? ACTIONS[action] : null;
   const clean = history.filter((h) => h.decision === "ACCEPT").length;
   const blocked = history.length - clean;
+  const shownClean = Math.round(useAnimatedNumber(clean));
+  const shownBlocked = Math.round(useAnimatedNumber(blocked));
 
   return (
     <section className="card side-card side-defender">
@@ -64,11 +67,11 @@ export function DefenderPanel({ output, history, attackAction, onAttackActionCha
       <div className="mini-stats">
         <div>
           <span className="label">Passed clean</span>
-          <span className="mono mini-val">{clean}</span>
+          <span className="mono mini-val">{shownClean}</span>
         </div>
         <div>
           <span className="label">Flagged</span>
-          <span className="mono mini-val">{blocked}</span>
+          <span className="mono mini-val">{shownBlocked}</span>
         </div>
         <div title="Inference time for this window, measured by the Defender (window collection excluded)">
           <span className="label">Decided in</span>

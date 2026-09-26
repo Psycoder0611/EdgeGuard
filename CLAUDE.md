@@ -109,10 +109,14 @@ Everyone gets data through **`part1.pipeline.RoadData`**: `windows()`, `labelled
 
 ### Dashboard (`dashboard/`): wired to real v2 Defender output, 2026-09-24
 React + Vite, KPI tab, live architecture diagram, fleet view. `DATA_SOURCE = "live"`
-(`dashboard/src/App.jsx`) by default: `dashboard/scripts/build_real_run.py` scores three real
+(`dashboard/src/App.jsx`) by default: `dashboard/scripts/build_real_run.py` scores four real
 ROAD development captures end to end with the real trained v2 Defender and writes
-`dashboard/src/data/realRun.json` (188 windows, 86 flagged ATTACK, real evidence text and
-latency, no ground truth) -- see `dashboard/README.md`'s "Data sources" section. This is a
+`dashboard/src/data/realRun.json` (216 windows, 86 flagged ATTACK, real evidence text and
+latency) -- see `dashboard/README.md`'s "Data sources" section. **Updated 2026-09-25:** the
+fourth capture, `reverse_light_off_attack_1`, is a deliberate hard case v2 misses (0/8), and
+each window now carries an evaluator-side `truth` field (added after scoring, never given to
+the Defender) so the dashboard can mark misses and false alarms in amber (8 missed, 1 false
+alarm). Highway drives were not used: they are final_test. This is a
 REPLAY of a precomputed run, not a live socket to a running Nano; there is still no live
 streaming inference process anywhere in this repo. The mock generator is kept as a fallback
 (`DATA_SOURCE = "mock"`).

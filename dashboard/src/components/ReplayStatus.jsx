@@ -1,6 +1,21 @@
-// Compact replay control bar: play/pause, reset, position, scrubbable
-// progress and speed, all on one small row.
-export default function ReplayStatus({ captureId, index, total, isPlaying, speed, onPlay, onPause, onReset, onSpeed, onSeek }) {
+import { REAL_TIME } from "../utils/useReplay";
+import { useClock, driveSeconds, formatHms } from "../utils/clock";
+
+// Compact replay control bar: play/pause, reset, replay indicator + clock,
+// position and drive time, scrubbable progress, speed and alert sound, all
+// on one small row.
+const SPEEDS = [
+  { value: REAL_TIME, label: "Real-time", title: "1 window per second: the rate data actually arrives from the car" },
+  { value: 1, label: "1x" },
+  { value: 2, label: "2x" },
+  { value: 4, label: "4x" },
+];
+
+export default function ReplayStatus({
+  captureId, windowId, index, total, isPlaying, speed,
+  onPlay, onPause, onReset, onSpeed, onSeek, soundOn, onToggleSound,
+}) {
+  const now = useClock();
   function scrub(e) {
     if (!onSeek || !total) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -28,8 +43,17 @@ export default function ReplayStatus({ captureId, index, total, isPlaying, speed
         </svg>
       </button>
 
+      <span
+        className={`replay-indicator ${isPlaying ? "replay-indicator-on" : ""}`}
+        title="Replaying recorded Defender output; the clock is your local time"
+      >
+        <span className="replay-dot" aria-hidden="true" />
+        REPLAY
+        <span className="mono replay-clock">{now.toLocaleTimeString([], { hour12: false })}</span>
+      </span>
+
       <span className="replay-pos mono">
-        {captureId} &middot; {index + 1}/{total}
+        {captureId} &middot; <span title="Drive time into this recording (1 window = 1 s)">{formatHms(driveSeconds(windowId, index))}</span> &middot; {index + 1}/{total}
       </span>
 
       <div
@@ -45,16 +69,36 @@ export default function ReplayStatus({ captureId, index, total, isPlaying, speed
       </div>
 
       <div className="speed-group" aria-label="Playback speed">
-        {[1, 2, 4].map((s) => (
+        {SPEEDS.map((s) => (
           <button
-            key={s}
-            className={`btn btn-chip ${speed === s ? "btn-chip-active" : ""}`}
-            onClick={() => onSpeed(s)}
+            key={s.label}
+            className={`btn btn-chip ${speed === s.value ? "btn-chip-active" : ""}`}
+            onClick={() => onSpeed(s.value)}
+            title={s.title}
           >
-            {s}x
+            {s.label}
           </button>
         ))}
       </div>
+
+      {onToggleSound && (
+        <button
+          onClick={onToggleSound}
+          className={`icon-btn ${soundOn ? "icon-btn-on" : ""}`}
+          aria-label={soundOn ? "Mute alert sound" : "Turn on alert sound"}
+          aria-pressed={soundOn}
+          title={soundOn ? "Alert sound on" : "Alert sound off"}
+        >
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M2.5 6 H5 L8.5 3 V13 L5 10 H2.5 Z" fill="currentColor" stroke="none" />
+            {soundOn ? (
+              <><path d="M10.5 5.5 A3.5 3.5 0 0 1 10.5 10.5" /><path d="M12.3 3.8 A6 6 0 0 1 12.3 12.2" /></>
+            ) : (
+              <><path d="M10.5 6 L14 10" /><path d="M14 6 L10.5 10" /></>
+            )}
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

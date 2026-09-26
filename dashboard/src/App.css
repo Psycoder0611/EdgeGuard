@@ -224,7 +224,7 @@
 
 .metrics-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr); /* not 1fr: a wide child must not stretch the column past the screen */
   grid-template-areas: "kpi" "device" "chart" "routing";
   gap: 16px;
 }
@@ -235,7 +235,8 @@
   grid-template-areas:
     "cars cars"
     "attacker defender"
-    "timeline timeline";
+    "timeline timeline"
+    "log log";
   gap: 16px;
 }
 
@@ -246,6 +247,7 @@
 .routing-panel { grid-area: routing; }
 .cars-scene { grid-area: cars; }
 .alert-timeline { grid-area: timeline; }
+.event-log { grid-area: log; }
 .side-attacker { grid-area: attacker; }
 .side-defender { grid-area: defender; }
 
@@ -253,7 +255,7 @@
 @media (max-width: 640px) {
   .fleet-grid {
     grid-template-columns: 1fr;
-    grid-template-areas: "cars" "attacker" "defender" "timeline";
+    grid-template-areas: "cars" "attacker" "defender" "timeline" "log";
   }
 }
 
@@ -449,6 +451,71 @@
   color: var(--muted);
 }
 
+/* ---------- event log ---------- */
+
+.log-lines {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  height: 240px;
+  overflow-y: auto;
+  background: #0b1116;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.9;
+}
+
+.log-line {
+  display: grid;
+  grid-template-columns: 64px 104px 58px 64px minmax(90px, 1fr) 60px 72px 104px; /* fixed tag column keeps rows aligned */
+  gap: 12px;
+  align-items: baseline;
+  white-space: nowrap;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+}
+
+.log-line > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.log-line:first-child {
+  animation: logIn 350ms ease-out;
+}
+
+.log-accept { opacity: 0.8; }
+.log-accept .log-dec { color: var(--good-text); }
+.log-attack .log-dec,
+.log-attack .log-check { color: var(--attacker-text); font-weight: 700; }
+.log-attack { background: color-mix(in srgb, var(--attacker) 8%, transparent); }
+.log-time { color: var(--text-secondary); }
+.log-outcome { color: var(--warning); font-weight: 700; }
+.log-empty { color: var(--muted); }
+
+@keyframes logIn {
+  from { opacity: 0; transform: translateY(-6px); background: color-mix(in srgb, var(--cyan) 18%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-line:first-child { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .event-log .card-head,
+  .event-log .card-head-meta {
+    flex-wrap: wrap;
+  }
+
+  .log-line {
+    grid-template-columns: repeat(4, minmax(0, auto));
+    column-gap: 10px;
+    row-gap: 0;
+    padding: 4px 0;
+    white-space: normal;
+  }
+}
+
 /* ---------- alert timeline ---------- */
 
 .legend {
@@ -474,6 +541,10 @@
 
 .legend-dot-critical {
   background: var(--critical);
+}
+
+.legend-dot-warning {
+  background: var(--warning);
 }
 
 .timeline-strip {
@@ -502,6 +573,21 @@
   background: var(--attacker);
   box-shadow: 0 0 6px rgba(240, 68, 82, 0.55);
   height: 100%;
+}
+
+/* Evaluator view: the Defender's decision was wrong (see utils/outcome.js). */
+.timeline-mark-missed {
+  background: var(--warning);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--warning) 55%, transparent);
+}
+
+.timeline-mark-false_alarm {
+  box-shadow: inset 0 0 0 2px var(--warning), 0 0 6px color-mix(in srgb, var(--warning) 55%, transparent);
+}
+
+.outcome-text {
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .timeline-mark-now {
@@ -618,6 +704,29 @@
 .arch-label-sm {
   font-size: 13.5px;
   font-weight: 700;
+}
+
+.arch-sub {
+  font: 500 11px "Inter Variable", "Inter", sans-serif;
+  opacity: 0.85;
+}
+
+.arch-group-title {
+  font: 700 11px "Inter Variable", "Inter", sans-serif;
+  letter-spacing: 0.16em;
+}
+
+.arch-note {
+  font: 500 11.5px "Inter Variable", "Inter", sans-serif;
+}
+
+.arch-or {
+  font: 800 14px "JetBrains Mono", monospace;
+}
+
+.arch-tag {
+  font: 700 9.5px "Inter Variable", "Inter", sans-serif;
+  letter-spacing: 0.12em;
 }
 
 .arch-step {
@@ -1203,7 +1312,7 @@
   align-items: center;
   gap: 8px;
   padding: 6px 0;
-  flex: 0 1 520px;
+  flex: 0 1 860px;
   min-width: 0;
 }
 
@@ -1237,6 +1346,80 @@
   font-size: 12px;
   color: var(--text-secondary);
   white-space: nowrap;
+}
+
+/* ● REPLAY + wall clock. The dot blinks only while playing. */
+.replay-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.replay-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--baseline);
+}
+
+.replay-indicator-on .replay-dot {
+  background: var(--attacker);
+  box-shadow: 0 0 8px var(--attacker);
+  animation: replayBlink 1.2s ease-in-out infinite;
+}
+
+.replay-clock {
+  font-weight: 500;
+  letter-spacing: 0;
+  font-size: 12px;
+}
+
+@keyframes replayBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Narrow screens: let the control bar wrap, progress on its own full row. */
+@media (max-width: 720px) {
+  .replay-bar {
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .replay-bar .progress-track {
+    order: 10;
+    flex-basis: 100%;
+  }
+}
+
+.icon-btn-on {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* One red pulse around the page when a window turns ATTACK. */
+.alert-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  border-radius: 4px;
+  animation: alertFlash 900ms ease-out forwards;
+}
+
+@keyframes alertFlash {
+  0% { box-shadow: inset 0 0 0 3px var(--attacker), inset 0 0 60px rgba(240, 68, 82, 0.35); }
+  100% { box-shadow: inset 0 0 0 3px transparent, inset 0 0 60px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .replay-indicator-on .replay-dot { animation: none; }
+  .alert-flash { animation-duration: 1ms; }
 }
 
 .replay-bar .progress-track {
