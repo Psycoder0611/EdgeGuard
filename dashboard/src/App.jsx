@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Header from "./components/Header";
 import ReplayStatus from "./components/ReplayStatus";
 import ScoreGauge from "./components/ScoreGauge";
@@ -9,18 +9,21 @@ import KpiTiles from "./components/KpiTiles";
 import ScoreChart from "./components/ScoreChart";
 import UploadPanel from "./components/UploadPanel";
 import EdgeTelemetry from "./components/EdgeTelemetry";
+import EventLog from "./components/EventLog";
 import { AttackerPanel, DefenderPanel, RoutingPanel } from "./components/DetailPanels";
 import { buildMockRun, CAPTURE_META } from "./data/mockRun";
 import { ESCALATION_QUALITY } from "./data/escalationQuality";
 import { connectLiveFeed } from "./data/liveFeed";
 import { useReplay } from "./utils/useReplay";
 import { isInEscalationBand } from "./utils/escalation";
+import { unlockAlertSound, playAlertPing } from "./utils/alertSound";
+import { useEventLog } from "./utils/useEventLog";
 import "./App.css";
 
 const DATA_SOURCE = "live"; // "mock" (data/mockRun.js) or "live" (data/liveFeed.js, real v2 Defender output)
 const TABS = [
   { id: "cars", label: "Fleet view" },
-  { id: "kpi", label: "KPIs" },
+  { id: "kpi", label: "System Architecture" },
   { id: "metrics", label: "Metrics" },
 ];
 
@@ -53,11 +56,34 @@ export default function App() {
   const demoMeta = DATA_SOURCE === "live" ? live.meta ?? CAPTURE_META : CAPTURE_META;
   const run = source === "upload" && upload ? upload.run : demoRun;
   const meta = source === "upload" && upload ? upload.meta : demoMeta;
-  const replay = useReplay(run, { intervalMs: 300 });
+  const replay = useReplay(run, { intervalMs: 300, autoPlay: true, loop: true });
   const [attackAction, setAttackAction] = useState("SIMULATED_ALERT");
   const [tab, setTab] = useState("cars");
   // realRun.json chains several captures; show the one the current window belongs to.
   const captureId = replay.current?.window_id?.split("_")[0] ?? meta.captureId;
+
+  // Alert sound: off on every page load -- browsers only allow audio after a
+  // click, so the toggle itself is what unlocks it.
+  const [soundOn, setSoundOn] = useState(false);
+  function toggleSound() {
+    setSoundOn(!soundOn && unlockAlertSound());
+  }
+
+  // Flash (and optionally ping) once when the decision turns ACCEPT -> ATTACK,
+  // not on every window of an attack burst.
+  const [flashKey, setFlashKey] = useState(0);
+  const prevDecisionRef = useRef(null);
+  const decision = replay.current?.decision ?? null;
+  useEffect(() => {
+    if (decision === "ATTACK" && prevDecisionRef.current !== "ATTACK" && prevDecisionRef.current !== null) {
+      setFlashKey((k) => k + 1);
+      if (soundOn) playAlertPing();
+    }
+    prevDecisionRef.current = decision;
+  }, [decision, soundOn]);
+
+  // Console log of every window shown; starts fresh when the run changes.
+  const events = useEventLog(replay.current, attackAction, run);
 
   if (DATA_SOURCE === "live" && live.status !== "ready") {
     return (
@@ -90,6 +116,7 @@ export default function App() {
   const replayBar = (
     <ReplayStatus
       captureId={captureId}
+      windowId={replay.current?.window_id}
       index={replay.index}
       total={replay.total}
       isPlaying={replay.isPlaying}
@@ -99,11 +126,14 @@ export default function App() {
       onReset={replay.reset}
       onSpeed={replay.setSpeed}
       onSeek={replay.seek}
+      soundOn={soundOn}
+      onToggleSound={toggleSound}
     />
   );
 
   return (
     <div className="app-shell">
+      {flashKey > 0 && <div key={flashKey} className="alert-flash" aria-hidden="true" />}
       <Header
         dataSource={DATA_SOURCE}
         sourceLabel={source === "upload" && upload ? upload.meta.fileName : null}
@@ -138,7 +168,7 @@ export default function App() {
 
       {tab === "cars" && (
         <main className="fleet-grid">
-          <CarsView output={replay.current} attackAction={attackAction} />
+          <CarsView output={replay.current} attackAction={attackAction} isPlaying={replay.isPlaying} />
 
           <AttackerPanel output={replay.current} history={replay.history} />
 
@@ -150,6 +180,8 @@ export default function App() {
           />
 
           <AlertTimeline history={replay.history} onSeek={replay.seek} />
+
+          <EventLog events={events} />
         </main>
       )}
 

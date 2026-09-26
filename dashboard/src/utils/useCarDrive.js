@@ -46,8 +46,10 @@ export function pointOnRoad(t) {
  * Freezes everything (position AND any in-progress fade) for `pauseMs` the
  * moment `alert` goes from false to true -- a deliberate "braking" beat,
  * independent of how long the underlying attack window(s) last in the data.
+ *
+ * `running: false` (the replay is paused) holds the car where it is.
  */
-export function useCarDrive(alert, { speed = 0.05, pauseMs = 3000 } = {}) {
+export function useCarDrive(alert, { speed = 0.05, pauseMs = 3000, running = true } = {}) {
   const [t, setT] = useState(MIN_T);
   const [opacity, setOpacity] = useState(1);
   const phaseRef = useRef("driving"); // 'driving' | 'fading-out' | 'fading-in'
@@ -56,6 +58,12 @@ export function useCarDrive(alert, { speed = 0.05, pauseMs = 3000 } = {}) {
   const pausedUntilRef = useRef(0);
   const prevAlertRef = useRef(false);
   const rafRef = useRef(null);
+  // Read inside the animation loop, so pausing takes effect without
+  // restarting it.
+  const runningRef = useRef(running);
+  useEffect(() => {
+    runningRef.current = running;
+  }, [running]);
 
   useEffect(() => {
     if (alert && !prevAlertRef.current) {
@@ -79,7 +87,9 @@ export function useCarDrive(alert, { speed = 0.05, pauseMs = 3000 } = {}) {
       lastFrameRef.current = now;
 
       if (now >= pausedUntilRef.current) {
-        if (phaseRef.current === "driving") {
+        // Paused replay: the car holds its position. A loop fade already in
+        // progress still finishes, so it never freezes half-transparent.
+        if (phaseRef.current === "driving" && runningRef.current) {
           setT((prev) => {
             const next = prev + speed * dt;
             if (next >= MAX_T) {

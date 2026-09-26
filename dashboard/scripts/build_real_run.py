@@ -4,15 +4,27 @@ for the dashboard's "live" data source (see dashboard/src/data/liveFeed.js
 and README.md's "Connecting the real feed").
 
 This is REAL ROAD data, REAL v2 inference, REAL evidence text and REAL
-per-window latency -- not synthetic mock data. It concatenates three real
+per-window latency -- not synthetic mock data. It concatenates four real
 DEVELOPMENT attack captures (never final_test/separate) in their own
 chronological order, one after another, purely to give the demo replay a
 few distinct attack bursts the way defender/dev_check.py's own numbers show
 they naturally occur (each capture already mixes normal driving with an
-injected attack in the middle). No ground-truth label is written to the
-JSON: shared/schemas.py's DefenderOutput has no label field, and the
-dashboard is meant to show only what the Defender itself would output in
-real deployment, never an oracle answer.
+injected attack in the middle).
+
+The last capture is a deliberate HARD CASE: reverse_light_off_attack_1,
+which v2 misses entirely (0 / 8 attack windows, see CLAUDE.md's development
+check). Showing a known weakness is more honest than a replay of only the
+attacks v2 catches -- but a missed attack looks exactly like normal traffic
+from the Defender's output alone, so each window also carries a separate
+"truth" field ("attack" / "normal") taken from Part 1's private
+GroundTruthLabel. That field is EVALUATOR-side only: it is read after
+score_window() returns, is never passed to the Defender, and is not part of
+shared/schemas.py's DefenderOutput. The dashboard uses it only to mark
+misses and false alarms, never to change a decision.
+
+The highway drives (the other obvious hard case, v2's false alarms) are
+final_test captures, which RoadData refuses outside the one-time final
+evaluation, so they cannot appear here.
 
 Usage (from the EdgeGuard repo root):
     python -m dashboard.scripts.build_real_run --data-dir ~/Downloads/road
@@ -20,6 +32,7 @@ Usage (from the EdgeGuard repo root):
 
 import argparse
 import json
+import platform
 import sys
 from pathlib import Path
 
@@ -38,11 +51,13 @@ MAX_ESCALATION_RATE = 0.3
 
 # Real development captures, in the order they'll play. Each already mixes
 # normal driving with one injected attack burst (see defender/dev_check.py's
-# own real-data numbers: 22/6, 25/63, 38/34 attacked/normal windows).
+# own real-data numbers: 22/6, 25/63, 38/34, 8/20 attacked/normal windows).
+# The last one is the hard case v2 misses (see the module docstring).
 CAPTURES = [
     "correlated_signal_attack_2",
     "max_speedometer_attack_1",
     "reverse_light_on_attack_2",
+    "reverse_light_off_attack_1",
 ]
 MODEL_VERSION = "v2"
 
@@ -66,8 +81,8 @@ def build(data_dir, manifest_path, model_dir):
 
     run = []
     for name in CAPTURES:
-        for window, _label in road.labelled_windows(name):
-            output = defender.score_window(window)
+        for window, label in road.labelled_windows(name):
+            output = defender.score_window(window)   # the label never reaches the Defender
             run.append({
                 "window_id": output.window_id,
                 "attack_score": round(output.attack_score, 4),
@@ -76,6 +91,8 @@ def build(data_dir, manifest_path, model_dir):
                 "evidence": output.evidence,
                 "model_version": output.model_version,
                 "latency_ms": round(output.latency_ms, 2),
+                # Evaluator-side only, added after scoring (see module docstring).
+                "truth": "attack" if label.is_attack else "normal",
             })
 
     meta = {
@@ -85,6 +102,8 @@ def build(data_dir, manifest_path, model_dir):
         "threshold": defender.threshold,
         "escalationBandHalfWidth": band_half_width,
         "maxEscalationRate": MAX_ESCALATION_RATE,
+        # latency_ms is inference time on whichever machine ran this script.
+        "latencyMeasuredOn": f"{platform.node()} ({platform.machine()})",
         "source": "real ROAD development captures, real v2 Defender inference "
                   "(build_real_run.py) -- not mock data",
     }
@@ -106,8 +125,10 @@ def main(argv=None) -> int:
     out_path.write_text(json.dumps({"run": run, "meta": meta}, indent=2), encoding="utf-8")
 
     attacked = sum(1 for r in run if r["decision"] == "ATTACK")
-    print(f"Wrote {len(run)} real windows ({attacked} flagged ATTACK) from "
-         f"{', '.join(CAPTURES)} to {out_path}")
+    missed = sum(1 for r in run if r["truth"] == "attack" and r["decision"] == "ACCEPT")
+    false_alarms = sum(1 for r in run if r["truth"] == "normal" and r["decision"] == "ATTACK")
+    print(f"Wrote {len(run)} real windows ({attacked} flagged ATTACK, {missed} missed "
+         f"attacks, {false_alarms} false alarms) from {', '.join(CAPTURES)} to {out_path}")
     return 0
 
 

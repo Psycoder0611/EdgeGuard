@@ -1,5 +1,7 @@
 import { parseEvidence } from "../utils/parseEvidence";
 import { useCarDrive } from "../utils/useCarDrive";
+import { formatLatency } from "../utils/latency";
+import { outcomeOf, OUTCOME_TEXT } from "../utils/outcome";
 
 // Glowing wireframe car scene -- a 2D SVG outline drawing with a neon glow
 // filter, not a literal 3D wireframe render (that needs a 3D engine and
@@ -7,11 +9,11 @@ import { useCarDrive } from "../utils/useCarDrive";
 // with a checkpoint gate (the Blue Team detector) and incoming Red Team
 // arrows during an attack window.
 
-export default function CarsView({ output, attackAction }) {
+export default function CarsView({ output, attackAction, isPlaying = true }) {
   const isAttack = output?.decision === "ATTACK";
   // Hook runs every render regardless (rules of hooks) -- it just has
   // nothing to react to alert-wise until `output` exists.
-  const { x, y, angle, opacity } = useCarDrive(isAttack);
+  const { x, y, angle, opacity } = useCarDrive(isAttack, { running: isPlaying });
 
   if (!output) {
     return (
@@ -24,14 +26,23 @@ export default function CarsView({ output, attackAction }) {
   const { canId } = parseEvidence(output.evidence);
   const scorePct = Math.round(output.attack_score * 100);
   const thresholdPct = Math.round(output.threshold * 100);
+  const latency = formatLatency(output.latency_ms);
+  const outcome = outcomeOf(output);
   const tilt = Math.max(Math.min(angle * 0.2, 12), -12); // subtle lean into curves, clamped
 
   return (
     <section className="card cars-scene">
       <div className="card-head">
         <h2>Fleet view</h2>
-        <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
-          {isAttack ? "Red Team attack" : "Normal traffic"}
+        <span className="card-head-meta">
+          {outcome && (
+            <span className="status-badge status-warning" title={OUTCOME_TEXT[outcome].tooltip}>
+              {OUTCOME_TEXT[outcome].badge}
+            </span>
+          )}
+          <span className={`status-badge ${isAttack ? "status-critical" : "status-good"}`}>
+            {isAttack ? "Red Team attack" : "Normal traffic"}
+          </span>
         </span>
       </div>
 
@@ -98,7 +109,9 @@ export default function CarsView({ output, attackAction }) {
 
       <div className="cars-footline hint">
         {output.window_id} &middot; {canId ? `CAN ${canId}` : "no CAN ID in evidence"} &middot; score {scorePct}% vs threshold {thresholdPct}%
+        {latency && ` · decided in ${latency}`}
         {isAttack && ` · responding with ${attackAction === "SIMULATED_ISOLATION" ? "isolation" : "alert"}`}
+        {outcome && <span className="outcome-text">{` · ${OUTCOME_TEXT[outcome].caption}`}</span>}
       </div>
     </section>
   );

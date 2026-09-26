@@ -67,13 +67,18 @@ consecutive 1-second windows, not one isolated blip. The threshold value
 
 - **`"live"` (default)** -- `src/data/liveFeed.js` loads `src/data/realRun.json`,
   a precomputed replay built by `dashboard/scripts/build_real_run.py`: it
-  scores three real ROAD development captures (`correlated_signal_attack_2`,
-  `max_speedometer_attack_1`, `reverse_light_on_attack_2`) end to end with the
-  real trained v2 Defender (`defender/defender.py`) and writes out real
-  `attack_score` / `evidence` / `latency_ms` per window, in order, no ground
-  truth included (`DefenderOutput` has no label field, so the dashboard shows
-  exactly what the Defender itself would say in real deployment). 188 windows,
-  86 of them flagged ATTACK. This is a REPLAY of a precomputed run, not a
+  scores four real ROAD development captures (`correlated_signal_attack_2`,
+  `max_speedometer_attack_1`, `reverse_light_on_attack_2`,
+  `reverse_light_off_attack_1`) end to end with the real trained v2 Defender
+  (`defender/defender.py`) and writes out real `attack_score` / `evidence` /
+  `latency_ms` per window, in order. 216 windows, 86 flagged ATTACK.
+  The last capture is a deliberate **hard case**: v2 misses all 8 of its
+  attack windows. So that a miss is visible at all, each window also carries
+  an evaluator-side `truth` field ("attack" / "normal") from Part 1's private
+  labels, added AFTER scoring and never passed to the Defender. The dashboard
+  uses it only to mark mistakes in amber (8 missed attacks, 1 false alarm in
+  `reverse_light_on_attack_2`); every decision shown is still the Defender's
+  own. `meta.latencyMeasuredOn` records which machine timed the run. This is a REPLAY of a precomputed run, not a
   socket to a running Nano -- there is no live streaming inference process
   anywhere in this repo yet, so "live" means "real recorded Defender output,"
   not "real-time." `App.jsx` loads it asynchronously (`connectLiveFeed()`
